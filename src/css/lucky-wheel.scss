@@ -127,6 +127,66 @@
   padding: 18px;
 }
 
+.campaign-zalo-panel {
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(249, 198, 103, 0.12);
+  border: 1px solid rgba(221, 159, 47, 0.18);
+}
+
+.campaign-zalo-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.campaign-zalo-copy strong {
+  font-size: 15px;
+  color: var(--brand-text);
+}
+
+.campaign-zalo-copy span,
+.campaign-zalo-status {
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(113, 73, 12, 0.78);
+}
+
+.campaign-zalo-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.campaign-secondary-button {
+  min-height: 46px;
+  border-radius: 14px;
+  border: 0;
+  background: linear-gradient(180deg, #f7d887 0%, #efb948 100%);
+  color: #6b4308;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  box-shadow: 0 12px 20px rgba(221, 159, 47, 0.14);
+}
+
+.campaign-secondary-button--outline {
+  border: 1px solid rgba(221, 159, 47, 0.28);
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: none;
+}
+
+.campaign-secondary-button:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.campaign-zalo-status {
+  margin-top: 12px;
+}
+
 .campaign-field {
   display: flex;
   flex-direction: column;
@@ -465,5 +525,9 @@
 
   .campaign-wheel-slice-content span {
     font-size: 9px;
+  }
+
+  .campaign-zalo-actions {
+    grid-template-columns: 1fr;
   }
 }

@@ -118,11 +118,18 @@ class RuntimeGameController extends Controller
         }
 
         $payload = $request->input('payload', []);
+        $zaloProfile = $request->input('zalo_profile', []);
+        $zaloPhoneNumber = $this->stringOrNull($request->input('zalo_phone_number'));
+        $zaloPhoneToken = $this->stringOrNull($request->input('zalo_phone_token'));
 
         if (! is_array($payload)) {
             return response()->json([
                 'message' => 'The payload must be an object.',
             ], 422);
+        }
+
+        if (! is_array($zaloProfile)) {
+            $zaloProfile = [];
         }
 
         $errors = $this->validateDynamicPayload($game->formFields->where('is_active', true), $payload);
@@ -134,37 +141,74 @@ class RuntimeGameController extends Controller
             ], 422);
         }
 
-        $player = Player::query()
-            ->where('game_id', $game->id)
-            ->when(
-                filled($payload['phone'] ?? null),
-                fn ($query) => $query->where('phone', $payload['phone'])
-            )
-            ->first();
+        $resolvedFullName = $this->firstFilledString(
+            $payload['full_name'] ?? null,
+            $payload['name'] ?? null,
+            data_get($zaloProfile, 'name'),
+        );
+        $resolvedPhone = $this->firstFilledString(
+            $payload['phone'] ?? null,
+            $zaloPhoneNumber,
+        );
+        $resolvedEmail = $this->firstFilledString(
+            $payload['email'] ?? null,
+        );
+        $zaloUserId = $this->firstFilledString(
+            data_get($zaloProfile, 'id'),
+            data_get($zaloProfile, 'idByOA'),
+        );
+
+        $player = null;
+
+        if ($zaloUserId) {
+            $player = Player::query()
+                ->where('game_id', $game->id)
+                ->where('zalo_user_id', $zaloUserId)
+                ->first();
+        }
+
+        if (! $player && $resolvedPhone) {
+            $player = Player::query()
+                ->where('game_id', $game->id)
+                ->where('phone', $resolvedPhone)
+                ->first();
+        }
 
         if (! $player) {
             $player = Player::create([
                 'workspace_id' => $game->workspace_id,
                 'game_id' => $game->id,
                 'public_id' => (string) Str::uuid(),
-                'full_name' => $payload['full_name'] ?? null,
-                'phone' => $payload['phone'] ?? null,
-                'email' => $payload['email'] ?? null,
+                'full_name' => $resolvedFullName,
+                'phone' => $resolvedPhone,
+                'email' => $resolvedEmail,
+                'zalo_user_id' => $zaloUserId,
                 'status' => 'active',
             ]);
         } else {
             $player->update([
-                'full_name' => $payload['full_name'] ?? $player->full_name,
-                'phone' => $payload['phone'] ?? $player->phone,
-                'email' => $payload['email'] ?? $player->email,
+                'full_name' => $resolvedFullName ?: $player->full_name,
+                'phone' => $resolvedPhone ?: $player->phone,
+                'email' => $resolvedEmail ?: $player->email,
+                'zalo_user_id' => $zaloUserId ?: $player->zalo_user_id,
             ]);
+        }
+
+        $submissionPayload = $payload;
+
+        if ($zaloUserId || $zaloPhoneToken) {
+            $submissionPayload['_zalo'] = array_filter([
+                'user_id' => $zaloUserId,
+                'phone_token' => $zaloPhoneToken,
+                'profile_name' => data_get($zaloProfile, 'name'),
+            ], fn ($value) => filled($value));
         }
 
         $submission = PlayerSubmission::create([
             'workspace_id' => $game->workspace_id,
             'game_id' => $game->id,
             'player_id' => $player->id,
-            'payload' => $payload,
+            'payload' => $submissionPayload,
             'source' => 'mini_app',
             'submitted_at' => now(),
         ]);
@@ -429,6 +473,34 @@ class RuntimeGameController extends Controller
         }
 
         return $errors;
+    }
+
+    protected function firstFilledString(mixed ...$values): ?string
+    {
+        foreach ($values as $value) {
+            if (! is_scalar($value)) {
+                continue;
+            }
+
+            $normalized = trim((string) $value);
+
+            if ($normalized !== '') {
+                return $normalized;
+            }
+        }
+
+        return null;
+    }
+
+    protected function stringOrNull(mixed $value): ?string
+    {
+        if (! is_scalar($value)) {
+            return null;
+        }
+
+        $normalized = trim((string) $value);
+
+        return $normalized !== '' ? $normalized : null;
     }
 
     protected function resolveRewardCode(int $gameId, ?string $rewardCode): ?RewardCode

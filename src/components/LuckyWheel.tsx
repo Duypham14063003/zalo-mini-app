@@ -5,7 +5,14 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { closeApp, showToast } from "zmp-sdk";
+import {
+  authorize,
+  closeApp,
+  getPhoneNumber,
+  getSetting,
+  getUserInfo,
+  showToast,
+} from "zmp-sdk";
 import "@/css/lucky-wheel.scss";
 
 type Stage = "booting" | "form" | "loading" | "wheel" | "unavailable";
@@ -79,6 +86,14 @@ type SubmissionResponse = {
   submissionId: number;
 };
 
+type ZaloProfile = {
+  id: string;
+  idByOA?: string;
+  name?: string;
+  avatar?: string;
+  followedOA?: boolean;
+};
+
 type EligibilityResponse = {
   eligible: boolean;
   playerPublicId?: string;
@@ -121,6 +136,14 @@ const PRIZE_TONES = [
   "#f7d888",
 ];
 const REWARD_CODE_HINTS = ["reward_code", "ma_du_thuong", "voucher_code"];
+const NAME_FIELD_HINTS = ["full_name", "ho_va_ten", "ho_ten", "ten", "name"];
+const PHONE_FIELD_HINTS = [
+  "phone",
+  "so_dien_thoai",
+  "sdt",
+  "dien_thoai",
+  "mobile",
+];
 
 function buildInitialForm(formFields: FormField[]) {
   return formFields.reduce<Record<string, string>>((accumulator, field) => {
@@ -275,6 +298,66 @@ function resolveRewardCodeValue(
   return formData[rewardCodeField.fieldKey]?.trim() || undefined;
 }
 
+function findFieldKeyByHints(
+  formFields: FormField[],
+  hints: string[],
+  preferredType?: "tel" | "email",
+) {
+  if (preferredType) {
+    const byType = formFields.find((field) => field.type === preferredType);
+    if (byType) {
+      return byType.fieldKey;
+    }
+  }
+
+  return formFields.find((field) => {
+    const candidates = [
+      field.fieldKey,
+      field.label,
+      field.placeholder ?? "",
+      field.helpText ?? "",
+    ].map(normaliseLookupText);
+
+    return hints.some((hint) =>
+      candidates.some((candidate) => candidate.includes(hint)),
+    );
+  })?.fieldKey;
+}
+
+function mergeOnlyEmptyFields(
+  current: Record<string, string>,
+  nextValues: Record<string, string>,
+) {
+  const next = { ...current };
+  const updatedKeys: string[] = [];
+
+  Object.entries(nextValues).forEach(([fieldKey, value]) => {
+    const incomingValue = value.trim();
+    const existingValue = current[fieldKey]?.trim() ?? "";
+
+    if (!incomingValue || existingValue) {
+      return;
+    }
+
+    next[fieldKey] = value;
+    updatedKeys.push(fieldKey);
+  });
+
+  return {
+    next,
+    updatedKeys,
+  };
+}
+
+function buildSpinIdempotencyKey(playerPublicId: string, submissionId: number) {
+  const uniqueSuffix =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+  return `${playerPublicId}-${submissionId}-${uniqueSuffix}`;
+}
+
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -344,6 +427,11 @@ export default function LuckyWheel() {
   const [claimRedirectTarget, setClaimRedirectTarget] = useState<string | null>(
     null,
   );
+  const [zaloProfile, setZaloProfile] = useState<ZaloProfile | null>(null);
+  const [zaloPhoneNumber, setZaloPhoneNumber] = useState<string | null>(null);
+  const [zaloPhoneToken, setZaloPhoneToken] = useState<string | null>(null);
+  const [isLoadingZaloProfile, setIsLoadingZaloProfile] = useState(false);
+  const [isLoadingZaloPhone, setIsLoadingZaloPhone] = useState(false);
   const loadingTimer = useRef<number | null>(null);
   const progressTimer = useRef<number | null>(null);
 
@@ -414,6 +502,136 @@ export default function LuckyWheel() {
   const continueButtonLabel = content.continue_button ?? "Tiep tuc";
   const loadingLabel = content.loading_message ?? "Dang tai...";
 
+  const applyAutofillValues = async (
+    nextValues: Record<string, string>,
+    successMessage: string,
+    fallbackMessage: string,
+  ) => {
+    const { next, updatedKeys } = mergeOnlyEmptyFields(formData, nextValues);
+
+    if (updatedKeys.length === 0) {
+      await showToast({ message: fallbackMessage });
+      return;
+    }
+
+    setFormData(next);
+    setFieldErrors((current) => {
+      const cleaned = { ...current };
+      updatedKeys.forEach((fieldKey) => {
+        delete cleaned[fieldKey];
+      });
+      return cleaned;
+    });
+
+    await showToast({ message: successMessage });
+  };
+
+  const ensureZaloScopes = async (
+    scopes: Array<"scope.userInfo" | "scope.userPhonenumber">,
+  ) => {
+    const settings = await getSetting({});
+    const missingScopes = scopes.filter(
+      (scope) => !settings.authSetting?.[scope],
+    );
+
+    if (missingScopes.length > 0) {
+      await authorize({
+        scopes: missingScopes,
+      });
+    }
+  };
+
+  const handleConnectZalo = async () => {
+    setIsLoadingZaloProfile(true);
+
+    try {
+      await ensureZaloScopes(["scope.userInfo"]);
+      const { userInfo } = await getUserInfo({});
+      const nextProfile: ZaloProfile = {
+        id: userInfo.id,
+        idByOA: userInfo.idByOA,
+        name: userInfo.name,
+        avatar: userInfo.avatar,
+        followedOA: userInfo.followedOA,
+      };
+
+      setZaloProfile(nextProfile);
+
+      const nameFieldKey = findFieldKeyByHints(formFields, NAME_FIELD_HINTS);
+
+      await applyAutofillValues(
+        {
+          ...(nameFieldKey && userInfo.name
+            ? { [nameFieldKey]: userInfo.name }
+            : {}),
+        },
+        "Da cap nhat thong tin tu Zalo",
+        "Thong tin Zalo da co, cac o hien tai khong con trong de cap nhat",
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Khong the ket noi thong tin Zalo";
+      await showToast({ message });
+    } finally {
+      setIsLoadingZaloProfile(false);
+    }
+  };
+
+  const handleFillPhoneFromZalo = async () => {
+    setIsLoadingZaloPhone(true);
+
+    try {
+      await ensureZaloScopes(["scope.userPhonenumber"]);
+      const { number, token } = await getPhoneNumber({});
+
+      if (token) {
+        setZaloPhoneToken(token);
+      }
+
+      if (number?.trim()) {
+        setZaloPhoneNumber(number);
+
+        const phoneFieldKey = findFieldKeyByHints(
+          formFields,
+          PHONE_FIELD_HINTS,
+          "tel",
+        );
+
+        if (!phoneFieldKey) {
+          await showToast({
+            message: "Da lay so dien thoai Zalo, nhung form nay khong co o SDT",
+          });
+          return;
+        }
+
+        await applyAutofillValues(
+          { [phoneFieldKey]: number },
+          "Da cap nhat so dien thoai tu Zalo",
+          "So dien thoai da co, o SDT hien tai khong con trong de cap nhat",
+        );
+
+        return;
+      }
+
+      await showToast({
+        message:
+          token && !number
+            ? "Da cap quyen SDT. Moi truong nay chi tra token, he thong se dinh danh user khi gui form"
+            : "Khong lay duoc so dien thoai tu Zalo",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Khong the lay so dien thoai tu Zalo";
+      await showToast({ message });
+    } finally {
+      setIsLoadingZaloPhone(false);
+    }
+  };
+
   const handleFieldChange = (fieldKey: string, value: string) => {
     setFormData((current) => ({
       ...current,
@@ -446,7 +664,12 @@ export default function LuckyWheel() {
         `/games/${gameIdentifier}/submissions`,
         {
           method: "POST",
-          body: JSON.stringify({ payload: formData }),
+          body: JSON.stringify({
+            payload: formData,
+            zalo_profile: zaloProfile,
+            zalo_phone_number: zaloPhoneNumber,
+            zalo_phone_token: zaloPhoneToken,
+          }),
         },
       );
 
@@ -515,6 +738,10 @@ export default function LuckyWheel() {
 
     try {
       const rewardCodeValue = resolveRewardCodeValue(formFields, formData);
+      const idempotencyKey = buildSpinIdempotencyKey(
+        playerPublicId,
+        submissionId,
+      );
       const response = await requestJson<SpinResponse>(
         `/games/${gameIdentifier}/spin`,
         {
@@ -523,7 +750,7 @@ export default function LuckyWheel() {
             player_public_id: playerPublicId,
             player_submission_id: submissionId,
             reward_code: rewardCodeValue,
-            idempotency_key: `${playerPublicId}-${submissionId}`,
+            idempotency_key: idempotencyKey,
           }),
         },
       );
@@ -693,6 +920,46 @@ export default function LuckyWheel() {
           </div>
 
           <div className="campaign-panel campaign-form-panel">
+            <div className="campaign-zalo-panel">
+              <div className="campaign-zalo-copy">
+                <strong>Điền nhanh bằng Zalo</strong>
+                <span>
+                  Xin quyền để tự điền các ô còn trống, không ghi đè dữ liệu bạn
+                  đã nhập.
+                </span>
+              </div>
+
+              <div className="campaign-zalo-actions">
+                <button
+                  type="button"
+                  className="campaign-secondary-button"
+                  disabled={isLoadingZaloProfile}
+                  onClick={() => void handleConnectZalo()}
+                >
+                  {isLoadingZaloProfile
+                    ? "Dang ket noi..."
+                    : "Đăng nhập bằng Zalo"}
+                </button>
+
+                <button
+                  type="button"
+                  className="campaign-secondary-button campaign-secondary-button--outline"
+                  disabled={isLoadingZaloPhone}
+                  onClick={() => void handleFillPhoneFromZalo()}
+                >
+                  {isLoadingZaloPhone
+                    ? "Dang lay SDT..."
+                    : "Lấy số điện thoại"}
+                </button>
+              </div>
+
+              {zaloProfile ? (
+                <div className="campaign-zalo-status">
+                  Đã liên kết: <strong>{zaloProfile.name ?? "Tài khoản Zalo"}</strong>
+                </div>
+              ) : null}
+            </div>
+
             {formFields.map((field) => (
               <label key={field.fieldKey} className="campaign-field">
                 <span className="campaign-field-label">

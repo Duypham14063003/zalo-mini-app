@@ -13,6 +13,7 @@ use App\Models\Game;
 use App\Models\GameLaunchLink;
 use App\Models\GamePublicId;
 use App\Models\GameRule;
+use App\Models\Player;
 use App\Models\Prize;
 use App\Models\User;
 use App\Models\Workspace;
@@ -101,6 +102,44 @@ class GameBuilderPlatformTest extends TestCase
         ]);
 
         $response->assertNotFound();
+    }
+
+    public function test_submission_reuses_existing_player_when_zalo_user_id_matches(): void
+    {
+        $firstSubmission = $this->postJson('/api/games/ohar-yeu-thuong/submissions', [
+            'payload' => [
+                'reward_code' => 'LMAGMPGF',
+                'phone' => '0900000011',
+                'full_name' => 'Lan',
+                'district' => 'Quan Binh Tan',
+            ],
+            'zalo_profile' => [
+                'id' => 'zalo-user-001',
+                'name' => 'Lan Zalo',
+            ],
+        ])->assertCreated()->json();
+
+        $secondSubmission = $this->postJson('/api/games/ohar-yeu-thuong/submissions', [
+            'payload' => [
+                'reward_code' => 'LMAGMPGF',
+                'phone' => '0900000099',
+                'full_name' => 'Lan Nguyen',
+                'district' => 'Quan Binh Tan',
+            ],
+            'zalo_profile' => [
+                'id' => 'zalo-user-001',
+                'name' => 'Lan Nguyen',
+            ],
+        ])->assertCreated()->json();
+
+        $player = Player::query()->where('public_id', $firstSubmission['playerPublicId'])->firstOrFail();
+
+        $this->assertSame($firstSubmission['playerPublicId'], $secondSubmission['playerPublicId']);
+        $this->assertSame('zalo-user-001', $player->zalo_user_id);
+        $this->assertSame('Lan Nguyen', $player->full_name);
+        $this->assertSame('0900000099', $player->phone);
+        $this->assertSame(1, Player::count());
+        $this->assertSame(2, $player->submissions()->count());
     }
 
     public function test_claim_endpoint_is_idempotent_for_the_same_spin_result(): void

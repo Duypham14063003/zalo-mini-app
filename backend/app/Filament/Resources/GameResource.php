@@ -220,58 +220,71 @@ class GameResource extends Resource
                                             };
 
                                             return new HtmlString(sprintf(
-                                                '<div style="border-radius:28px; border:1px solid #f2e6c5; background:#fffdfa; padding:24px; box-shadow:0 18px 40px rgba(125, 90, 20, 0.08);">
-                                                    <div style="display:grid; grid-template-columns:minmax(0, 360px) minmax(0, 1fr); gap:24px; align-items:start;">
-                                                        <div style="display:flex; justify-content:center;">
-                                                            <div style="width:320px; border-radius:34px; padding:20px; background:%s; box-shadow:0 30px 50px rgba(217, 169, 54, 0.16); overflow:hidden;">
-                                                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                                                '<div style="border-radius:24px; border:1px solid #f2e6c5; background:#fffdfa; padding:20px; box-shadow:0 18px 40px rgba(125, 90, 20, 0.08);">
+                                                    <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">
+                                                        <div style="flex:0 0 300px; max-width:300px; margin-inline:auto;">
+                                                            <div style="border-radius:32px; padding:18px; background:%s; box-shadow:0 24px 40px rgba(217, 169, 54, 0.14); overflow:hidden;">
+                                                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
                                                                     <div style="font-size:12px; font-weight:700; color:#4b5563;">Mini App Preview</div>
-                                                                    <div style="padding:8px 14px; border-radius:999px; border:1px solid rgba(17,24,39,0.08); background:rgba(255,255,255,0.7); font-size:12px; color:#374151;">••• | ✕</div>
+                                                                    <div style="padding:8px 14px; border-radius:999px; border:1px solid rgba(17,24,39,0.08); background:rgba(255,255,255,0.72); font-size:12px; color:#374151;">••• | ✕</div>
                                                                 </div>
-                                                                <div style="text-align:center; margin-bottom:18px;">
-                                                                    <div style="font-size:16px; font-weight:700; color:%s;">Uống an lành, góp ngàn</div>
-                                                                    <div style="font-size:46px; line-height:1; font-style:italic; font-weight:500; color:%s; margin-top:8px;">Yêu Thương</div>
+                                                                <div style="text-align:center; margin-bottom:16px;">
+                                                                    <div style="font-size:15px; font-weight:700; color:%s;">Uống an lành, góp ngàn</div>
+                                                                    <div style="font-size:34px; line-height:1; font-style:italic; font-weight:500; color:%s; margin-top:8px;">Yêu Thương</div>
                                                                 </div>
-                                                                <div style="position:relative; width:248px; height:248px; margin:0 auto;">
-                                                                    <div style="position:absolute; top:-8px; left:50%%; transform:translateX(-50%%); width:0; height:0; border-left:18px solid transparent; border-right:18px solid transparent; border-top:0; border-bottom:34px solid %s; filter:drop-shadow(%s); z-index:3;"></div>
-                                                                    <div style="position:absolute; inset:0; border-radius:999px; padding:12px; background:%s; box-shadow:0 18px 34px rgba(217, 169, 54, 0.26);">
+                                                                <div style="position:relative; width:210px; height:210px; margin:0 auto;">
+                                                                    <div style="position:absolute; top:-4px; left:50%%; transform:translateX(-50%%); width:0; height:0; border-left:16px solid transparent; border-right:16px solid transparent; border-bottom:30px solid %s; filter:drop-shadow(%s); z-index:3;"></div>
+                                                                    <div style="position:absolute; inset:0; border-radius:999px; padding:10px; background:%s; box-shadow:0 16px 26px rgba(217, 169, 54, 0.22);">
                                                                         <div style="position:relative; width:100%%; height:100%%; border-radius:999px; overflow:hidden; background:%s; border:8px solid rgba(255,255,255,0.85);">
                                                                             <div style="position:absolute; inset:0; border-radius:999px; background:%s;"></div>
                                                                             <div style="position:absolute; inset:0; border-radius:999px; background:repeating-conic-gradient(from -90deg, rgba(255,255,255,0.18) 0deg 58deg, rgba(255,255,255,0) 58deg 60deg);"></div>
-                                                                            <div style="position:absolute; inset:50%% auto auto 50%%; transform:translate(-50%%, -50%%); width:84px; height:84px; border-radius:999px; background:%s; border:10px solid rgba(255,255,255,0.72); display:flex; align-items:center; justify-content:center; box-shadow:0 12px 24px rgba(217, 169, 54, 0.24);">
-                                                                                <span style="font-size:24px; font-weight:800; color:#9a5a18;">%s</span>
+                                                                            <div style="position:absolute; inset:50%% auto auto 50%%; transform:translate(-50%%, -50%%); width:72px; height:72px; border-radius:999px; background:%s; border:8px solid rgba(255,255,255,0.72); display:flex; align-items:center; justify-content:center; box-shadow:0 10px 18px rgba(217, 169, 54, 0.22);">
+                                                                                <span style="font-size:20px; font-weight:800; color:#9a5a18;">%s</span>
                                                                             </div>
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                <div style="margin-top:22px; text-align:center;">
-                                                                    <button type="button" style="border:none; border-radius:16px; padding:14px 28px; background:linear-gradient(180deg, %s 0%%, #8f1ea9 100%%); color:#fff; font-size:20px; font-weight:800; box-shadow:0 16px 26px rgba(121, 28, 149, 0.24);">%s</button>
+                                                                <div style="margin-top:18px; text-align:center;">
+                                                                    <button type="button" style="border:none; border-radius:14px; padding:12px 24px; background:linear-gradient(180deg, %s 0%%, #8f1ea9 100%%); color:#fff; font-size:18px; font-weight:800; box-shadow:0 14px 22px rgba(121, 28, 149, 0.22);">%s</button>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <div style="display:grid; gap:16px;">
-                                                           
-                                                            <div style="display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px;">
-                                                                <div style="border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
+                                                        <div style="flex:1 1 340px; min-width:280px; display:grid; gap:14px;">
+                                                            <div style="border-radius:20px; border:1px solid #f1e6c8; background:#fff; padding:16px;">
+                                                                <div style="font-size:16px; font-weight:800; color:#111827; margin-bottom:8px;">Preview người dùng sẽ thấy</div>
+                                                                <div style="font-size:14px; color:#6b7280; line-height:1.6;">Preview này mô phỏng nhanh bố cục màn hình quay để người tạo game dễ cảm nhận màu sắc và cảm giác tổng thể trước khi xuất bản.</div>
+                                                            </div>
+                                                            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                                                                <div style="flex:1 1 170px; border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
                                                                     <div style="font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em;">Màu chính</div>
                                                                     <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
                                                                         <span style="display:inline-block; width:18px; height:18px; border-radius:999px; background:%s; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,0.08);"></span>
                                                                         <strong style="font-size:14px; color:#374151;">%s</strong>
                                                                     </div>
                                                                 </div>
-                                                                <div style="border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
+                                                                <div style="flex:1 1 170px; border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
                                                                     <div style="font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em;">Màu phụ</div>
                                                                     <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
                                                                         <span style="display:inline-block; width:18px; height:18px; border-radius:999px; background:%s; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,0.08);"></span>
                                                                         <strong style="font-size:14px; color:#374151;">%s</strong>
                                                                     </div>
                                                                 </div>
-                                                                <div style="border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
+                                                                <div style="flex:1 1 170px; border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
                                                                     <div style="font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em;">Màu nhấn</div>
                                                                     <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
                                                                         <span style="display:inline-block; width:18px; height:18px; border-radius:999px; background:%s; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,0.08);"></span>
                                                                         <strong style="font-size:14px; color:#374151;">%s</strong>
                                                                     </div>
+                                                                </div>
+                                                            </div>
+                                                            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                                                                <div style="flex:1 1 170px; border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
+                                                                    <div style="font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em;">Preset</div>
+                                                                    <div style="margin-top:8px; font-size:15px; font-weight:700; color:#374151;">%s</div>
+                                                                </div>
+                                                                <div style="flex:1 1 170px; border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
+                                                                    <div style="font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em;">Nhãn trung tâm</div>
+                                                                    <div style="margin-top:8px; font-size:15px; font-weight:700; color:#374151;">%s</div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -295,6 +308,8 @@ class GameResource extends Resource
                                                 e($secondary),
                                                 e($accent),
                                                 e($accent),
+                                                e((string) $get('palette_preset')),
+                                                $centerLabel,
                                             ));
                                         }),
                                 ])
