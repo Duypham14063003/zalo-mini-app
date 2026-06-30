@@ -1,28 +1,29 @@
 ## Why
 
-The current mini app is frontend-only: form validation, campaign stats, spin results, and reward claiming are all handled locally in the client. This makes the campaign impossible to operate safely in production because reward codes, prize quotas, spin outcomes, and claim records cannot be verified or managed centrally.
+The backend foundation and basic admin CRUD now exist, but the operator experience is still far from the intended product. Instead of a real game-builder interface, the current admin behaves like a generic Laravel dashboard with partial editing screens, limited management workflows, and no step-based preview experience for designing a lucky wheel campaign.
 
 ## What Changes
 
-- Build a PHP backend, using PostgreSQL in Docker, to become the source of truth for campaign data, players, reward codes, spin attempts, prize allocation, and claim records.
-- Add mobile-facing APIs for campaign bootstrap, eligibility checks, server-side spin execution, reward claiming, and player history.
-- Add an admin web interface for operators to manage campaigns, prizes, reward codes, players, spin results, and claims.
-- Add audit-friendly operational workflows so campaign staff can review quota usage, claim status, and player activity without touching the database directly.
-- Define Docker-based local infrastructure for the PHP app and PostgreSQL so development and deployment setup are reproducible.
+- Re-scope the PHP admin from a simple campaign CRUD console into a guided game-builder experience tailored to the lucky wheel template.
+- Replace the current Breeze-style admin shell with a product-style layout that includes a left navigation rail, top toolbar, stepper workflow, and a persistent editing workspace.
+- Redesign the game editing flow into a multi-step builder for general configuration, reward configuration, wheel design, and final game presentation.
+- Add a real-time preview panel so operators can see wheel, theme, content, and prize changes before saving or publishing.
+- Complete the missing admin workflows for reward codes, player submissions, spin histories, claim records, and publish-state operations.
+- Extend persisted game configuration so wheel-specific visual choices such as presets, border assets, pointer assets, and preview tokens can be managed from admin instead of being implied in frontend code.
 
 ## Capabilities
 
 ### New Capabilities
-- `campaign-admin`: Admin console for managing campaigns, prizes, reward codes, players, spin results, and claim workflows.
-- `spin-engine-api`: Mobile API for campaign bootstrap, eligibility validation, server-side spin execution, reward claiming, and player history.
-- `campaign-data-platform`: PostgreSQL-backed domain model, operational rules, and Docker runtime for persistent campaign data and reliable local setup.
+- `campaign-admin`: Product-style admin builder for configuring, previewing, publishing, and operating lucky wheel games.
+- `campaign-data-platform`: Persisted builder configuration, wheel-design metadata, and operational records required by the admin.
+- `spin-engine-api`: Runtime behavior that reflects builder-managed configuration and operator-driven publication state.
 
 ### Modified Capabilities
 - None.
 
 ## Impact
 
-- Adds a new PHP backend application and admin interface.
-- Introduces PostgreSQL as the primary persistence layer, running in Docker for local development.
-- Moves spin outcome selection and reward-claim state from frontend-only logic into backend-controlled transactions.
-- Requires the mini app frontend to replace hardcoded stats, local random spin logic, and mock claim flow with API integration in a later implementation phase.
+- Affects Laravel web routes, controllers, Blade layouts, and admin-specific UI flows in `backend/`.
+- Requires data model extensions for wheel-design metadata, admin workflow state, and richer operational views.
+- Impacts runtime bootstrap behavior because the mini app must reflect admin-managed builder configuration.
+- Reuses the existing PHP/PostgreSQL/Docker foundation rather than introducing a new backend stack.

@@ -1,53 +1,43 @@
 ## ADDED Requirements
 
-### Requirement: Operators can manage campaign configuration
-The system SHALL provide an authenticated admin interface where operators can create, update, activate, deactivate, and review campaign records without direct database access.
+### Requirement: Operators use a builder-oriented admin shell
+The system SHALL provide an authenticated admin shell that presents a product-style navigation layout with a left navigation rail, top toolbar, and workspace-focused content area for campaign operations.
 
-#### Scenario: Create a draft campaign
-- **WHEN** an authenticated operator submits a new campaign with name, active period, and status
-- **THEN** the system creates the campaign in draft or inactive state and stores it for later activation
+#### Scenario: Operator enters the admin workspace
+- **WHEN** an authenticated operator visits the admin area
+- **THEN** the system renders the product shell with navigation, account context, and access to game-building workflows instead of a generic dashboard-only layout
 
-#### Scenario: Prevent overlapping active campaigns when exclusivity is required
-- **WHEN** an operator attempts to activate a campaign that conflicts with another active exclusive campaign
-- **THEN** the system rejects the activation and explains the conflict
+### Requirement: Operators edit a lucky wheel game through a guided multi-step builder
+The system SHALL provide a step-based game editing workflow for general settings, reward configuration, wheel design, and final game presentation.
 
-### Requirement: Operators can manage prize inventory and allocation settings
-The system SHALL provide admin workflows to define prizes, prize types, allocation weights, quota limits, and availability state for each campaign.
+#### Scenario: Operator moves between builder steps
+- **WHEN** an operator opens a game builder and navigates between steps
+- **THEN** the system preserves the current game context and presents step-specific controls with clear progression actions such as save, back, and continue
 
-#### Scenario: Configure a prize for a campaign
-- **WHEN** an operator creates or updates a prize with campaign association, label, weight, and quota
-- **THEN** the system stores the prize configuration and makes it available for server-side spin allocation
+### Requirement: Operators can preview wheel and presentation changes before publishing
+The system SHALL provide a live or near-real-time preview panel that reflects the currently edited game configuration during the builder workflow.
 
-#### Scenario: Prevent invalid prize settings
-- **WHEN** an operator submits a prize with invalid quota or missing campaign linkage
-- **THEN** the system rejects the change and returns validation errors
+#### Scenario: Operator updates wheel presentation values
+- **WHEN** an operator changes theme values, reward labels, or wheel design settings in the builder
+- **THEN** the system updates the preview so the operator can validate the resulting game appearance before publishing
 
-### Requirement: Operators can manage reward codes
-The system SHALL provide admin workflows to create, import, review, activate, and deactivate reward codes tied to campaigns.
+### Requirement: Operators can manage wheel design presets and assets
+The system SHALL provide admin controls for wheel-specific design selections such as color palettes, border presets, pointer presets, and related visual assets required by the lucky wheel template.
 
-#### Scenario: Import reward codes
-- **WHEN** an operator uploads or pastes a batch of reward codes for a campaign
-- **THEN** the system stores unique valid codes and reports duplicates or malformed entries
+#### Scenario: Operator selects a wheel border preset
+- **WHEN** an operator chooses a predefined wheel border or pointer style in the builder
+- **THEN** the system stores that choice and shows the selected design in preview and future runtime bootstrap output
 
-#### Scenario: Review reward code usage
-- **WHEN** an operator opens the reward code listing
-- **THEN** the system shows whether each code is unused, reserved, used, disabled, or otherwise unavailable
+### Requirement: Operators can complete operational management from admin
+The system SHALL provide operator workflows for reward codes, submissions, spin histories, claim records, and publish-state actions without requiring database access.
 
-### Requirement: Operators can review player activity and claim state
-The system SHALL provide admin views for players, spin results, and claims so operators can investigate campaign activity and fulfill rewards.
+#### Scenario: Operator reviews operational records for a game
+- **WHEN** an operator opens the management area for a game
+- **THEN** the system provides navigable views for reward codes, player submissions, spin results, and claim states associated with that game
 
-#### Scenario: Review a player history
-- **WHEN** an operator opens a player record
-- **THEN** the system shows submitted profile data, reward code usage, spin attempts, outcomes, and claim history for that player
+### Requirement: Operators can control game publication readiness
+The system SHALL provide explicit publish-state controls and validation-aware review before a game becomes the live runtime experience.
 
-#### Scenario: Mark a claim as fulfilled
-- **WHEN** an operator updates a claim from pending to fulfilled
-- **THEN** the system stores the new claim status and records who performed the action
-
-### Requirement: Administrative actions are auditable
-The system SHALL log security-sensitive and business-critical admin actions, including campaign changes, prize changes, reward code changes, and claim updates.
-
-#### Scenario: Audit a prize configuration change
-- **WHEN** an operator updates prize quota or allocation settings
-- **THEN** the system stores an audit record containing the actor, timestamp, target object, and relevant before/after values
-
+#### Scenario: Operator attempts to publish an incomplete game
+- **WHEN** an operator tries to publish a game with missing required builder configuration
+- **THEN** the system blocks publication and identifies the missing configuration that must be completed

@@ -1,0 +1,50 @@
+services:
+  app:
+    build:
+      context: ./backend
+      dockerfile: docker/php/Dockerfile
+    container_name: game-builder-app
+    working_dir: /var/www/html
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: game_builder
+      DB_USERNAME: game_builder
+      DB_PASSWORD: secret
+    volumes:
+      - ./backend:/var/www/html
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    image: nginx:1.27-alpine
+    container_name: game-builder-web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./backend:/var/www/html
+      - ./backend/docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: game-builder-postgres
+    environment:
+      POSTGRES_DB: game_builder
+      POSTGRES_USER: game_builder
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5433:5432"
+    volumes:
+      - game_builder_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U game_builder -d game_builder"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  game_builder_postgres_data:

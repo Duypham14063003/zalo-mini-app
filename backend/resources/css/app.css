@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-slate-100 text-slate-900;
+    }
+}
+
+@layer components {
+    .admin-shell {
+        @apply min-h-screen bg-slate-100;
+    }
+
+    .admin-sidebar {
+        @apply hidden w-64 flex-col border-r border-slate-700 bg-slate-900 text-white lg:flex;
+    }
+
+    .admin-sidebar-link {
+        @apply flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium text-slate-300 transition hover:bg-slate-800 hover:text-white;
+    }
+
+    .admin-sidebar-link-active {
+        @apply bg-emerald-500/15 text-white ring-1 ring-emerald-400/30;
+    }
+
+    .admin-topbar {
+        @apply flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-6 py-4 shadow-sm;
+    }
+
+    .admin-panel {
+        @apply rounded-[28px] border border-slate-200 bg-white shadow-sm;
+    }
+
+    .admin-panel-header {
+        @apply flex items-center justify-between gap-4 border-b border-slate-100 px-6 py-5;
+    }
+
+    .admin-step {
+        @apply flex items-center gap-3 text-sm font-medium text-slate-400;
+    }
+
+    .admin-step-dot {
+        @apply flex h-10 w-10 items-center justify-center rounded-full border border-sky-200 bg-sky-100 text-sky-500;
+    }
+
+    .admin-step-active .admin-step-dot {
+        @apply border-sky-500 bg-sky-500 text-white;
+    }
+
+    .admin-step-active {
+        @apply text-slate-900;
+    }
+
+    .admin-stat-card {
+        @apply rounded-[28px] p-6 shadow-sm;
+    }
+
+    .admin-soft-input {
+        @apply mt-2 w-full rounded-2xl border-slate-200 bg-white shadow-sm focus:border-sky-500 focus:ring-sky-500;
+    }
+
+    .admin-label {
+        @apply text-sm font-medium text-slate-700;
+    }
+
+    .admin-muted {
+        @apply text-sm text-slate-500;
+    }
+
+    .admin-primary-btn {
+        @apply inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800;
+    }
+
+    .admin-secondary-btn {
+        @apply inline-flex items-center justify-center rounded-2xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50;
+    }
+
+    .admin-accent-btn {
+        @apply inline-flex items-center justify-center rounded-2xl bg-amber-400 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-300;
+    }
+}

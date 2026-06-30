@@ -1,60 +1,70 @@
-# Zalo Mini App
+# Zalo Mini App Game Builder
 
 ## Project Structure
 
-- `src/`: Zalo Mini App frontend
-- `backend/`: Laravel admin and API backend
+- `src/`: Zalo Mini App frontend runtime
+- `backend/`: Laravel backend for platform APIs and future management surfaces
 - `docker-compose.yml`: local backend infrastructure with PostgreSQL
+- `openspec/`: change proposals, design notes, specs, and tasks
 
-## Development
+## Backend Development
 
-### Backend Admin/API
-
-1. Install PHP dependencies for the backend:
+1. Install backend dependencies:
    ```bash
    cd backend
    composer install
    npm install
    npm run build
    ```
-2. Return to the project root and start backend infrastructure:
+2. Start the local backend infrastructure from the project root:
    ```bash
    docker compose up -d --build
    ```
-3. Run Laravel migrations inside the PHP container:
+3. Run migrations and seed the baseline platform users:
    ```bash
-   docker compose exec app php artisan migrate
+   docker compose exec app php artisan migrate --seed
    ```
-4. Open the admin backend at `http://localhost:8080`.
-   PostgreSQL is exposed on host port `5433` to avoid conflicts with any local database already using `5432`.
+4. Open the Laravel backend at `http://localhost:8080`.
 
-### Mini App Frontend
+### Default local identities
+
+- Platform admin: `admin@example.com`
+- Workspace owner: `owner@example.com`
+- Shared local password: `password`
+
+### Database defaults
+
+- Database: `game_builder`
+- Username: `game_builder`
+- Password: `secret`
+- Host port: `5433`
+
+## Mini App Frontend Development
 
 ### Using Zalo Mini App Extension
 
 1. Install [Visual Studio Code](https://code.visualstudio.com/download) and [Zalo Mini App Extension](https://mini.zalo.me/docs/dev-tools).
-1. In the **Home** tab, process **Config App ID** and **Install Dependencies**.
-1. Navigate to the **Run** tab, select the suitable launcher, and click **Start**.
+2. In the **Home** tab, complete **Config App ID** and **Install Dependencies**.
+3. Navigate to the **Run** tab, select the suitable launcher, and click **Start**.
 
 ### Using Zalo Mini App CLI
 
 1. [Install Node JS](https://nodejs.org/en/download/).
-1. [Install Zalo Mini App CLI](https://mini.zalo.me/docs/dev-tools/cli/intro/).
-1. **Install dependencies**:
+2. [Install Zalo Mini App CLI](https://mini.zalo.me/docs/dev-tools/cli/intro/).
+3. **Install dependencies**:
    ```bash
    npm install
    ```
-1. **Start** the dev server:
+4. **Start** the dev server:
    ```bash
    zmp start
    ```
-1. **Open** `localhost:3000` in your browser.
+5. **Open** `localhost:3000` in your browser.
 
 ## Deployment
 
-1. **Create** a mini program. For instructions on how to create a mini program, please refer to the [Coffee Shop Tutorial](https://mini.zalo.me/tutorial/coffee-shop/step-1/)
-
-1. **Deploy** your mini program to Zalo using the mini app ID created.
+1. **Create** a mini program. For instructions on how to create a mini program, please refer to the [Coffee Shop Tutorial](https://mini.zalo.me/tutorial/coffee-shop/step-1/).
+2. **Deploy** your mini program to Zalo using the mini app ID created.
 
    - **Using Zalo Mini App Extension**: navigate to the **Deploy** panel > **Login** > **Deploy**.
    - **Using Zalo Mini App CLI**:
@@ -63,7 +73,7 @@
      zmp deploy
      ```
 
-1. Open the mini app in Zalo by scanning the QR code.
+3. Open the mini app in Zalo by scanning the QR code.
 
 ## Resources
 
@@ -74,4 +84,3 @@
 - [DevTools Documentation](https://mini.zalo.me/docs/dev-tools/)
 - [Ready-made Mini App Templates](https://mini.zalo.me/zaui-templates)
 - [Community Support](https://mini.zalo.me/community)
-# zalo-mini-app

@@ -1,53 +1,29 @@
 ## ADDED Requirements
 
-### Requirement: The mini app can bootstrap current campaign data
-The system SHALL expose a mobile API that returns the active campaign metadata needed to render the mini app experience, including campaign copy, prize listing, and summary statistics approved for player display.
+### Requirement: Runtime bootstrap reflects published builder configuration
+The system SHALL expose runtime bootstrap data that reflects the currently published game-builder configuration rather than implicit frontend defaults or draft-only admin values.
 
-#### Scenario: Load the active campaign
-- **WHEN** the mini app requests current campaign data during startup
-- **THEN** the system returns the active campaign configuration and player-safe display data for the current experience
+#### Scenario: Load a published lucky wheel game
+- **WHEN** the mini app requests bootstrap data for a published game
+- **THEN** the system returns player-safe content, reward display data, and wheel-design configuration derived from the published builder state
 
-#### Scenario: No active campaign is available
-- **WHEN** the mini app requests current campaign data and no campaign is active
-- **THEN** the system returns a response that explicitly indicates the campaign is unavailable
+### Requirement: Runtime availability follows admin publication controls
+The system SHALL honor admin-managed publication and readiness state when deciding whether a game is available to the mini app.
 
-### Requirement: The mini app can validate eligibility before spinning
-The system SHALL expose an API that validates submitted player information and reward code state before allowing a spin attempt.
+#### Scenario: Draft changes do not affect the live game
+- **WHEN** an operator saves builder changes without publishing them
+- **THEN** the runtime API continues serving the last published configuration until a publish action succeeds
 
-#### Scenario: Eligible player proceeds to spin
-- **WHEN** the mini app submits a valid reward code and required player information for an active campaign
-- **THEN** the system confirms eligibility and returns the player's available spin entitlement
+### Requirement: Runtime prize allocation uses admin-managed reward configuration
+The system SHALL execute spins using the currently published reward configuration, including activation state, quota limits, and allocation weights managed in admin.
 
-#### Scenario: Invalid or exhausted reward code is rejected
-- **WHEN** the mini app submits a reward code that is invalid, disabled, expired, or already consumed
-- **THEN** the system rejects the request and returns a non-eligible response with a clear reason
+#### Scenario: Operator disables a prize before new spins
+- **WHEN** an operator marks a prize as unavailable in admin and publishes the change
+- **THEN** subsequent spin allocations exclude that prize from valid outcomes
 
-### Requirement: Spin outcomes are allocated by the server
-The system SHALL expose an API that executes a spin attempt on the server, applies campaign rules, enforces prize availability, and persists the result atomically.
+### Requirement: Runtime claim and history records remain reviewable in admin
+The system SHALL persist spin and claim outcomes in a form that can be surfaced through admin operational screens without requiring direct database access.
 
-#### Scenario: Successful spin allocation
-- **WHEN** an eligible player submits a spin request
-- **THEN** the system allocates a valid outcome, stores the spin result, updates relevant counters, and returns the awarded prize
-
-#### Scenario: Prize exhaustion affects allocation
-- **WHEN** a candidate prize is unavailable due to quota exhaustion or disabled status
-- **THEN** the system excludes that prize from allocation and returns only an outcome that remains valid under campaign rules
-
-### Requirement: Reward claiming is handled as a backend state transition
-The system SHALL expose an API that records reward claim attempts and safely transitions eligible spin results into claimed state.
-
-#### Scenario: Claim an unclaimed reward
-- **WHEN** the player claims a reward tied to a valid unclaimed spin result
-- **THEN** the system marks the reward as claimed and returns the updated claim state
-
-#### Scenario: Duplicate claim submission is retried
-- **WHEN** the player repeats a claim request for the same already claimed result
-- **THEN** the system responds idempotently without creating duplicate claims
-
-### Requirement: Players can retrieve their spin history
-The system SHALL expose an API that returns the authenticated or identified player's campaign participation history.
-
-#### Scenario: Load prior spin results
-- **WHEN** the mini app requests player history for a valid player context
-- **THEN** the system returns the player's prior spins, outcomes, and claim states
-
+#### Scenario: Operator reviews a claim from runtime activity
+- **WHEN** a player finishes a spin and claims a reward through the mobile flow
+- **THEN** the resulting records are available for later inspection in the admin claim and activity views
