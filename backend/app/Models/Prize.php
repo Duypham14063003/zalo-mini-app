@@ -44,4 +44,9 @@ class Prize extends Model
     {
         return $this->hasMany(RewardCode::class);
     }
+
+    public function spinLogs(): HasMany
+    {
+        return $this->hasMany(SpinLog::class);
+    }
 }

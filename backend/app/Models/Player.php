@@ -46,4 +46,9 @@ class Player extends Model
     {
         return $this->hasMany(SpinResult::class);
     }
+
+    public function spinLogs(): HasMany
+    {
+        return $this->hasMany(SpinLog::class);
+    }
 }
