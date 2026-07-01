@@ -4,6 +4,7 @@ namespace App\Filament\Resources\GameResource\Pages;
 
 use App\Enums\GameLaunchChannel;
 use App\Enums\GameLaunchStatus;
+use App\Enums\GameStatus;
 use App\Filament\Resources\GameResource;
 use App\Services\GameBuilderService;
 use App\Services\GameLaunchLinkService;
@@ -75,6 +76,7 @@ class EditGame extends EditRecord
             'redirect_target_type' => data_get($draft, 'presentation.redirect.target_type'),
             'redirect_target_value' => data_get($draft, 'presentation.redirect.target_value'),
             'redirect_fallback_value' => data_get($draft, 'presentation.redirect.fallback_value'),
+            'redirect_message_template' => data_get($draft, 'presentation.redirect.message_template'),
             'form_fields' => collect(data_get($draft, 'presentation.fields', []))
                 ->map(fn (array $field) => [
                     'id' => $field['id'] ?? null,
@@ -149,6 +151,7 @@ class EditGame extends EditRecord
                 'target_type' => $data['redirect_target_type'] ?? null,
                 'target_value' => $data['redirect_target_value'] ?? null,
                 'fallback_value' => $data['redirect_fallback_value'] ?? null,
+                'message_template' => $data['redirect_message_template'] ?? null,
             ],
             'fields' => collect($data['form_fields'] ?? [])
                 ->map(function (array $field, int $index) {
@@ -198,6 +201,7 @@ class EditGame extends EditRecord
             Action::make('publish')
                 ->label('Xuất bản')
                 ->color('success')
+                ->visible(fn (): bool => ! $this->isPublishedForUi($this->getRecord()))
                 ->action(function (): void {
                     try {
                         $service = app(GameBuilderService::class);
@@ -230,6 +234,7 @@ class EditGame extends EditRecord
             Action::make('unpublish')
                 ->label('Hủy xuất bản')
                 ->color('gray')
+                ->visible(fn (): bool => $this->isPublishedForUi($this->getRecord()))
                 ->action(function (): void {
                     $service = app(GameBuilderService::class);
                     $launchLinkService = app(GameLaunchLinkService::class);
@@ -252,7 +257,7 @@ class EditGame extends EditRecord
             Action::make('regenerateLaunchLinks')
                 ->label('Tạo lại link')
                 ->color('warning')
-                ->visible(fn (): bool => (bool) $this->getRecord()->published_at)
+                ->visible(fn (): bool => $this->isPublishedForUi($this->getRecord()))
                 ->action(function (): void {
                     $launchLinkService = app(GameLaunchLinkService::class);
                     $relations = ['publicIds'];
@@ -303,7 +308,7 @@ class EditGame extends EditRecord
         $webPreview = $launchLinks->first(fn ($link) => $link->channel === GameLaunchChannel::WebPreview);
         $zaloMiniApp = $launchLinks->first(fn ($link) => $link->channel === GameLaunchChannel::ZaloMiniApp);
         $statusSummary = $launchLinkService->summarizeStatuses($record);
-        $isPublished = (bool) $record->published_at && $record->builderConfig?->publication_status === 'published';
+        $isPublished = $this->isPublishedForUi($record);
 
         $statusText = ! $launchLinkService->tableExists()
             ? 'Thiếu bảng game_launch_links'
@@ -343,5 +348,12 @@ class EditGame extends EditRecord
         }
 
         return 'https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=' . rawurlencode($payload);
+    }
+
+    protected function isPublishedForUi(Model $record): bool
+    {
+        return (bool) $record->published_at
+            && $record->builderConfig?->publication_status === 'published'
+            && ($record->status?->value ?? $record->status) !== GameStatus::Draft->value;
     }
 }

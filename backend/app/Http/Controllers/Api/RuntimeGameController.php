@@ -58,6 +58,7 @@ class RuntimeGameController extends Controller
                     'borderPreset' => $publishedDesign['border_preset'] ?? null,
                     'pointerPreset' => $publishedDesign['pointer_preset'] ?? null,
                     'centerLabel' => $publishedDesign['center_label'] ?? null,
+                    'previewNote' => $publishedDesign['preview_note'] ?? null,
                 ],
             ]),
             'content' => ! empty($publishedPresentation)
@@ -102,6 +103,7 @@ class RuntimeGameController extends Controller
                     'targetType' => $redirect->target_type,
                     'targetValue' => $redirect->target_value,
                     'fallbackValue' => $redirect->fallback_value,
+                    'messageTemplate' => $redirect->message_template,
                 ];
             }),
         ]);

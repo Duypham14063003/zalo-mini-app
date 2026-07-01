@@ -38,6 +38,7 @@ class ClaimTransitionService
                 'metadata' => [
                     'fallback_value' => $redirect?->fallback_value,
                     'target_type' => $redirect?->target_type,
+                    'message_template' => $redirect?->message_template,
                 ],
             ]);
 

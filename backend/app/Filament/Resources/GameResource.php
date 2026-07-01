@@ -362,6 +362,10 @@ class GameResource extends Resource
                                     TextInput::make('redirect_target_type')->label('Loại đích đến'),
                                     TextInput::make('redirect_target_value')->label('Giá trị đích đến'),
                                     TextInput::make('redirect_fallback_value')->label('Giá trị dự phòng'),
+                                    Textarea::make('redirect_message_template')
+                                        ->label('Tin nhắn OA')
+                                        ->rows(3)
+                                        ->helperText('Dùng khi mở chat OA bằng Zalo SDK. Nên nhập OA ID vào "Giá trị đích đến", ví dụ target_type = oa_chat, target_value = 123456789.'),
                                 ])
                                 ->columns(2),
                             Section::make('Liên kết triển khai')
@@ -453,6 +457,11 @@ class GameResource extends Resource
                     }),
                 TextColumn::make('builderConfig.publication_status')
                     ->label('Xuất bản')
+                    ->state(fn (Game $record) => (bool) $record->published_at
+                        && $record->builderConfig?->publication_status === 'published'
+                        && ($record->status?->value ?? $record->status) !== GameStatus::Draft->value
+                        ? 'published'
+                        : 'draft')
                     ->badge()
                     ->default('draft')
                     ->formatStateUsing(fn ($state) => match ((string) $state) {

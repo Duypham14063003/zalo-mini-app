@@ -17,7 +17,7 @@
 
     <div class="py-8">
         <div class="mx-auto max-w-7xl space-y-8 px-4 sm:px-6 lg:px-8">
-            <div class="grid gap-4 md:grid-cols-4">
+            <div class="grid gap-4 md:grid-cols-5">
                 <div class="admin-stat-card bg-slate-900 text-white">
                     <p class="text-sm text-slate-300">Workspace</p>
                     <p class="mt-3 text-4xl font-semibold">{{ $stats['workspace_count'] }}</p>
@@ -32,6 +32,11 @@
                     <p class="text-sm text-slate-500">Submissions</p>
                     <p class="mt-3 text-4xl font-semibold text-slate-900">{{ $stats['submission_count'] }}</p>
                     <p class="mt-2 text-sm text-slate-400">Du lieu user da thu thap</p>
+                </div>
+                <div class="admin-stat-card bg-white">
+                    <p class="text-sm text-slate-500">Nguoi trung qua</p>
+                    <p class="mt-3 text-4xl font-semibold text-slate-900">{{ $stats['winning_player_count'] }}</p>
+                    <p class="mt-2 text-sm text-slate-400">Player duy nhat da trung thuong</p>
                 </div>
                 <div class="admin-stat-card bg-gradient-to-br from-sky-500 to-indigo-500 text-white">
                     <p class="text-sm text-sky-100">Builder mode</p>
@@ -66,6 +71,8 @@
                                     <div class="flex flex-wrap gap-4 text-sm text-slate-500">
                                         <span>{{ $game->players_count }} players</span>
                                         <span>{{ $game->prizes_count }} prizes</span>
+                                        <span>{{ $game->winning_players_count ?? 0 }} nguoi trung</span>
+                                        <span>{{ $game->winning_results_count ?? 0 }} luot trung</span>
                                         <span>{{ $game->rules?->max_spins_per_player ?? 1 }} spin / player</span>
                                     </div>
                                 </div>

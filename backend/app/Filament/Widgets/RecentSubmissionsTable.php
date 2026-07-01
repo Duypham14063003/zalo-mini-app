@@ -25,7 +25,7 @@ class RecentSubmissionsTable extends TableWidget
         return $table
             ->query(
                 PlayerSubmission::query()
-                    ->with(['workspace', 'game', 'player'])
+                    ->with(['workspace', 'game', 'player', 'spinAttempts.result.prize', 'spinAttempts.result.claim'])
                     ->when(
                         $user && ! $user->isPlatformAdmin(),
                         fn (Builder $query) => $query->whereIn('game_id', function ($subQuery) use ($workspaceIds) {
@@ -69,6 +69,7 @@ class RecentSubmissionsTable extends TableWidget
                     ->modalContent(fn (PlayerSubmission $record) => view('filament.widgets.lead-detail', [
                         'submission' => $record,
                         'payloadRows' => $this->formatPayloadRows($record),
+                        'winningRows' => $this->formatWinningRows($record),
                     ])),
             ]);
     }
@@ -110,5 +111,32 @@ class RecentSubmissionsTable extends TableWidget
             ->join(' ');
 
         return $label !== '' ? $label : $key;
+    }
+
+    /**
+     * @return Collection<int, array{label: string, description: string, claim_status: string, resolved_at: string}>
+     */
+    protected function formatWinningRows(PlayerSubmission $submission): Collection
+    {
+        return $submission->spinAttempts
+            ->map(fn ($attempt) => $attempt->result)
+            ->filter(fn ($result) => $result && $result->result_type === 'prize')
+            ->map(function ($result): array {
+                $prizeLabel = $result->prize?->label
+                    ?? data_get($result->awarded_payload, 'label')
+                    ?? 'Phần thưởng chưa xác định';
+
+                $description = $result->prize?->description
+                    ?? data_get($result->awarded_payload, 'description')
+                    ?? 'Hệ thống đã ghi nhận phần thưởng cho lead này.';
+
+                return [
+                    'label' => $prizeLabel,
+                    'description' => $description,
+                    'claim_status' => $result->claim_status?->value ?? (string) $result->claim_status,
+                    'resolved_at' => optional($result->resolved_at)->format('d/m/Y H:i:s') ?? 'Chưa có',
+                ];
+            })
+            ->values();
     }
 }

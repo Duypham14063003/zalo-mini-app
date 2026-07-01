@@ -51,20 +51,30 @@
 
 1. [Install Node JS](https://nodejs.org/en/download/).
 2. [Install Zalo Mini App CLI](https://mini.zalo.me/docs/dev-tools/cli/intro/).
-3. **Install dependencies**:
+3. Move to the mini app root folder:
+   ```bash
+   cd /path/to/app-quay-may-man
+   ```
+   Do not run `zmp` commands inside `backend/`, because that folder is the Laravel API, not the Zalo Mini App project.
+4. **Install dependencies**:
    ```bash
    npm install
    ```
-4. **Start** the dev server:
+5. **Start** the dev server:
    ```bash
    zmp start
    ```
-5. **Open** `localhost:3000` in your browser.
+6. **Open** `localhost:3000` in your browser.
 
 ## Deployment
 
 1. **Create** a mini program. For instructions on how to create a mini program, please refer to the [Coffee Shop Tutorial](https://mini.zalo.me/tutorial/coffee-shop/step-1/).
-2. **Deploy** your mini program to Zalo using the mini app ID created.
+2. **Build** the frontend assets from the mini app root:
+   ```bash
+   npm run build
+   ```
+   This generates the `www/` folder and updates `www/app-config.json` with the built CSS and JS assets required by ZMP deploy.
+3. **Deploy** your mini program to Zalo using the mini app ID created.
 
    - **Using Zalo Mini App Extension**: navigate to the **Deploy** panel > **Login** > **Deploy**.
    - **Using Zalo Mini App CLI**:
@@ -72,8 +82,9 @@
      zmp login
      zmp deploy
      ```
+     When ZMP CLI asks for the dist folder, use `www` from the project root.
 
-3. Open the mini app in Zalo by scanning the QR code.
+4. Open the mini app in Zalo by scanning the QR code.
 
 ## Resources
 

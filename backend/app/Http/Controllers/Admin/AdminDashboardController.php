@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Game;
 use App\Models\PlayerSubmission;
+use App\Models\SpinResult;
 use App\Models\Workspace;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class AdminDashboardController extends Controller
@@ -19,7 +21,14 @@ class AdminDashboardController extends Controller
         $workspaceCount = $this->workspaceQuery($request)->count();
         $games = $this->gameQuery($request)
             ->with(['workspace', 'theme', 'rules', 'publicIds'])
-            ->withCount(['players', 'prizes'])
+            ->withCount([
+                'players',
+                'prizes',
+                'spinResults as winning_results_count' => fn (Builder $query) => $query->where('result_type', 'prize'),
+                'spinResults as winning_players_count' => fn (Builder $query) => $query
+                    ->select(DB::raw('count(distinct player_id)'))
+                    ->where('result_type', 'prize'),
+            ])
             ->latest('updated_at')
             ->get();
 
@@ -36,6 +45,11 @@ class AdminDashboardController extends Controller
             'submission_count' => PlayerSubmission::query()
                 ->whereIn('game_id', $games->pluck('id'))
                 ->count(),
+            'winning_player_count' => SpinResult::query()
+                ->whereIn('game_id', $games->pluck('id'))
+                ->where('result_type', 'prize')
+                ->distinct('player_id')
+                ->count('player_id'),
             'role_label' => str($user?->platform_role?->value ?? 'workspace_owner')
                 ->replace('_', ' ')
                 ->title()

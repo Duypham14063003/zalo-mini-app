@@ -26,6 +26,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/games/{game}/reward-codes', [AdminGameController::class, 'storeRewardCodes'])->name('games.reward-codes.store');
     Route::get('/games/{game}/submissions', [AdminGameController::class, 'submissions'])->name('games.submissions');
     Route::get('/games/{game}/activity', [AdminGameController::class, 'activity'])->name('games.activity');
+    Route::get('/games/{game}/winners', [AdminGameController::class, 'winners'])->name('games.winners');
     Route::get('/games/{game}/claims', [AdminGameController::class, 'claims'])->name('games.claims');
     Route::patch('/games/{game}/claims/{claim}/fulfill', [AdminGameController::class, 'fulfillClaim'])->name('games.claims.fulfill');
 

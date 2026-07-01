@@ -92,6 +92,11 @@ class Game extends Model
         return $this->hasMany(Player::class);
     }
 
+    public function spinResults(): HasMany
+    {
+        return $this->hasMany(SpinResult::class);
+    }
+
     public function launchLinks(): HasMany
     {
         return $this->hasMany(GameLaunchLink::class);

@@ -16,6 +16,7 @@ class GameRedirect extends Model
         'target_type',
         'target_value',
         'fallback_value',
+        'message_template',
         'is_primary',
     ];
 

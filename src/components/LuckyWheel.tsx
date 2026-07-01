@@ -11,6 +11,10 @@ import {
   getPhoneNumber,
   getSetting,
   getUserInfo,
+  interactOA,
+  openChat,
+  openOutApp,
+  openProfile,
   showToast,
 } from "zmp-sdk";
 import "@/css/lucky-wheel.scss";
@@ -21,6 +25,14 @@ type Theme = {
   primary_color?: string | null;
   secondary_color?: string | null;
   accent_color?: string | null;
+  background_style?: string | null;
+  wheel?: {
+    palettePreset?: string | null;
+    borderPreset?: string | null;
+    pointerPreset?: string | null;
+    centerLabel?: string | null;
+    previewNote?: string | null;
+  } | null;
   theme_tokens?: {
     button_color?: string | null;
     text_color?: string | null;
@@ -46,6 +58,12 @@ type Prize = {
   valueLabel?: string | null;
   tone: string;
   shortLabel: string;
+};
+
+type WonPrizeHistoryItem = {
+  spinResultId: number;
+  label: string;
+  description: string | null;
 };
 
 type BootstrapResponse = {
@@ -78,6 +96,7 @@ type BootstrapResponse = {
     targetType?: string | null;
     targetValue?: string | null;
     fallbackValue?: string | null;
+    messageTemplate?: string | null;
   } | null;
 };
 
@@ -120,6 +139,7 @@ type ClaimResponse = {
   metadata?: {
     fallback_value?: string | null;
     target_type?: string | null;
+    message_template?: string | null;
   };
 };
 
@@ -135,6 +155,14 @@ const PRIZE_TONES = [
   "#ffedbb",
   "#f7d888",
 ];
+const PALETTE_PRESETS: Record<string, string[]> = {
+  sunrise: ["#fdf1d0", "#ffcf64", "#ff914d", "#ff5040"],
+  marine: ["#edf5ff", "#1e63a4", "#114d86", "#0c355e"],
+  "soft-pop": ["#ffd8bf", "#f7d9cd", "#a8a0f1", "#7b58e5"],
+  mint: ["#f5d0b5", "#f5f1ee", "#abd8d1", "#76a8a9"],
+  candy: ["#dbdbdb", "#f6d1c5", "#f2a7b8", "#f98d9b"],
+  neon: ["#20b9ad", "#b2dee7", "#f7f8fc", "#ffb869"],
+};
 const REWARD_CODE_HINTS = ["reward_code", "ma_du_thuong", "voucher_code"];
 const NAME_FIELD_HINTS = ["full_name", "ho_va_ten", "ho_ten", "ten", "name"];
 const PHONE_FIELD_HINTS = [
@@ -176,15 +204,15 @@ function getPrizeAngle(index: number, prizeCount: number) {
   return (360 / Math.max(prizeCount, 1)) * index;
 }
 
-function getPrizeBubblePosition(index: number, prizeCount: number) {
+function getPrizeContentStyle(
+  _index: number,
+  prizeCount: number,
+): CSSProperties {
   const segmentAngle = 360 / Math.max(prizeCount, 1);
-  const angle =
-    ((-90 + index * segmentAngle + segmentAngle / 2) * Math.PI) / 180;
-  const radius = 35;
 
   return {
-    left: `${50 + radius * Math.cos(angle)}%`,
-    top: `${50 + radius * Math.sin(angle)}%`,
+    transform: `translate(-50%, -50%) rotate(${segmentAngle / 2}deg) translateY(-122px)`,
+    width: prizeCount <= 4 ? "34%" : "28%",
   };
 }
 
@@ -205,16 +233,56 @@ function buildWheelBackground(prizes: Prize[]) {
   return `conic-gradient(${segments})`;
 }
 
+function getPaletteTones(palettePreset?: string | null) {
+  const palette = palettePreset ? PALETTE_PRESETS[palettePreset] : null;
+
+  return palette && palette.length > 0 ? palette : PRIZE_TONES;
+}
+
 function toShortLabel(label: string) {
   return label.replace(/\s+/g, " ").trim().split(" ").slice(0, 3).join(" ");
 }
 
-function normalisePrizeList(prizes: BootstrapResponse["prizes"]): Prize[] {
+function normalisePrizeList(
+  prizes: BootstrapResponse["prizes"],
+  palettePreset?: string | null,
+): Prize[] {
+  const tones = getPaletteTones(palettePreset);
+
   return prizes.map((prize, index) => ({
     ...prize,
-    tone: PRIZE_TONES[index % PRIZE_TONES.length],
+    tone: tones[index % tones.length],
     shortLabel: toShortLabel(prize.valueLabel ?? prize.label),
   }));
+}
+
+function buildResultPrize(
+  response: SpinResponse,
+  matchedPrize: Prize | null,
+  fallbackTone: string,
+): Prize {
+  if (matchedPrize) {
+    return matchedPrize;
+  }
+
+  const label =
+    response.prize?.label ??
+    (response.resultType === "no_prize"
+      ? "Chúc bạn may mắn lần sau"
+      : "Kết quả đang được cập nhật");
+  const description =
+    response.prize?.description ??
+    (response.resultType === "no_prize"
+      ? "Bạn chưa nhận được phần thưởng ở lượt quay này."
+      : "Hệ thống đã ghi nhận kết quả quay của bạn.");
+
+  return {
+    code: response.prize?.code ?? `result-${response.spinResultId}`,
+    label,
+    description,
+    tone: fallbackTone,
+    shortLabel: toShortLabel(label),
+  };
 }
 
 function getRequiredFieldErrors(
@@ -387,8 +455,58 @@ async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
 async function runClaimAction(claim: ClaimResponse) {
   const redirectTarget =
     claim.redirectTarget ?? claim.metadata?.fallback_value ?? null;
+  const targetType = claim.metadata?.target_type ?? null;
+  const messageTemplate = claim.metadata?.message_template ?? undefined;
+
+  if (claim.action === "open_oa") {
+    const oaTarget = claim.redirectTarget?.trim() ?? "";
+
+    if (oaTarget) {
+      if (targetType === "oa_chat" || targetType === "zalo_oa_chat") {
+        await openChat({
+          type: "oa",
+          id: oaTarget,
+          ...(messageTemplate ? { message: messageTemplate } : {}),
+        });
+        return;
+      }
+
+      if (targetType === "oa_profile" || targetType === "zalo_oa_profile") {
+        await openProfile({
+          type: "oa",
+          id: oaTarget,
+        });
+        return;
+      }
+
+      if (targetType === "alias_oa" || targetType === "zalo_alias_oa") {
+        await openProfile({
+          type: "aliasOA",
+          id: oaTarget,
+        });
+        return;
+      }
+
+      if (targetType === "oa_interact") {
+        await interactOA({
+          oaId: oaTarget,
+        });
+        return;
+      }
+    }
+  }
 
   if (redirectTarget) {
+    if (/^https?:\/\//i.test(redirectTarget)) {
+      try {
+        await openOutApp({ url: redirectTarget });
+        return;
+      } catch {
+        window.location.href = redirectTarget;
+        return;
+      }
+    }
+
     window.location.href = redirectTarget;
     return;
   }
@@ -414,6 +532,9 @@ export default function LuckyWheel() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [winner, setWinner] = useState<Prize | null>(null);
   const [pendingPrize, setPendingPrize] = useState<Prize | null>(null);
+  const [pendingResultType, setPendingResultType] = useState<string | null>(
+    null,
+  );
   const [rotation, setRotation] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -422,10 +543,14 @@ export default function LuckyWheel() {
   const [unavailableMessage, setUnavailableMessage] = useState("");
   const [playerPublicId, setPlayerPublicId] = useState<string | null>(null);
   const [submissionId, setSubmissionId] = useState<number | null>(null);
+  const [remainingSpins, setRemainingSpins] = useState<number | null>(null);
   const [spinResultId, setSpinResultId] = useState<number | null>(null);
   const [claimAction, setClaimAction] = useState<string | null>(null);
   const [claimRedirectTarget, setClaimRedirectTarget] = useState<string | null>(
     null,
+  );
+  const [wonPrizeHistory, setWonPrizeHistory] = useState<WonPrizeHistoryItem[]>(
+    [],
   );
   const [zaloProfile, setZaloProfile] = useState<ZaloProfile | null>(null);
   const [zaloPhoneNumber, setZaloPhoneNumber] = useState<string | null>(null);
@@ -437,6 +562,16 @@ export default function LuckyWheel() {
 
   const formFields = bootstrap?.formFields ?? [];
   const content = bootstrap?.content ?? {};
+  const backgroundStyle = bootstrap?.theme?.background_style ?? "warm_gradient";
+  const wheelTheme = bootstrap?.theme?.wheel ?? null;
+  const paletteTones = useMemo(
+    () => getPaletteTones(wheelTheme?.palettePreset),
+    [wheelTheme?.palettePreset],
+  );
+  const borderPreset = wheelTheme?.borderPreset ?? "classic-red";
+  const pointerPreset = wheelTheme?.pointerPreset ?? "teardrop-gold";
+  const centerLabel = wheelTheme?.centerLabel?.trim() || "19T";
+  const previewNote = wheelTheme?.previewNote?.trim() || "";
   const shellStyle = useMemo(
     () =>
       ({
@@ -449,6 +584,7 @@ export default function LuckyWheel() {
         "--brand-text": bootstrap?.theme?.theme_tokens?.text_color ?? "#71490c",
         "--brand-background":
           bootstrap?.theme?.theme_tokens?.background_color ?? "#fff8eb",
+        "--wheel-center-text": bootstrap?.theme?.accent_color ?? "#d26757",
       }) as CSSProperties,
     [bootstrap],
   );
@@ -469,7 +605,12 @@ export default function LuckyWheel() {
         }
 
         setBootstrap(response);
-        setPrizes(normalisePrizeList(response.prizes));
+        setPrizes(
+          normalisePrizeList(
+            response.prizes,
+            response.theme?.wheel?.palettePreset ?? null,
+          ),
+        );
         setFormData(buildInitialForm(response.formFields));
         setStage("form");
       } catch (error) {
@@ -501,6 +642,7 @@ export default function LuckyWheel() {
   const spinButtonLabel = content.spin_button ?? "Quay ngay";
   const continueButtonLabel = content.continue_button ?? "Tiep tuc";
   const loadingLabel = content.loading_message ?? "Dang tai...";
+  const hasRemainingSpins = (remainingSpins ?? 0) > 0;
 
   const applyAutofillValues = async (
     nextValues: Record<string, string>,
@@ -686,13 +828,15 @@ export default function LuckyWheel() {
 
       if (!eligibility.eligible) {
         await showToast({
-          message: "Thong tin chua du dieu kien de quay",
+          message:
+            "Trò chơi không được phép tiếp tục" + (eligibility.reason ?? ""),
         });
         return;
       }
 
       setPlayerPublicId(submission.playerPublicId);
       setSubmissionId(submission.submissionId);
+      setRemainingSpins(eligibility.remainingSpins ?? null);
       setStage("loading");
       setLoadingProgress(18);
 
@@ -755,17 +899,25 @@ export default function LuckyWheel() {
         },
       );
 
-      const selectedPrize =
-        prizes.find((prize) => prize.code === response.prize?.code) ??
-        prizes[0];
-
-      const selectedIndex = Math.max(
-        prizes.findIndex((prize) => prize.code === selectedPrize.code),
-        0,
+      const matchedPrize = response.prize?.code
+        ? (prizes.find((prize) => prize.code === response.prize?.code) ?? null)
+        : null;
+      const fallbackIndex = Math.floor(Math.random() * prizes.length);
+      const selectedIndex = matchedPrize
+        ? Math.max(
+            prizes.findIndex((prize) => prize.code === matchedPrize.code),
+            0,
+          )
+        : fallbackIndex;
+      const selectedPrize = buildResultPrize(
+        response,
+        matchedPrize,
+        paletteTones[selectedIndex % paletteTones.length],
       );
+
       const segmentAngle = 360 / prizes.length;
       const targetAngle = selectedIndex * segmentAngle + segmentAngle / 2;
-      const pointerAngle = 270;
+      const pointerAngle = 0;
       const extraTurns = 360 * 6;
       const normalizedRotation = ((rotation % 360) + 360) % 360;
       const finalRotation =
@@ -774,7 +926,11 @@ export default function LuckyWheel() {
         ((pointerAngle - targetAngle - normalizedRotation + 360) % 360);
 
       setPendingPrize(selectedPrize);
+      setPendingResultType(response.resultType);
       setSpinResultId(response.spinResultId);
+      setRemainingSpins((current) =>
+        typeof current === "number" ? Math.max(0, current - 1) : current,
+      );
       setRotation(finalRotation);
     } catch (error) {
       setIsSpinning(false);
@@ -828,6 +984,14 @@ export default function LuckyWheel() {
     }
   };
 
+  const handleContinueAfterWin = () => {
+    setWinner(null);
+    setPendingPrize(null);
+    setSpinResultId(null);
+    setClaimAction(null);
+    setClaimRedirectTarget(null);
+  };
+
   const renderField = (field: FormField) => {
     if (field.type === "select") {
       return (
@@ -863,7 +1027,10 @@ export default function LuckyWheel() {
   };
 
   return (
-    <div className="campaign-shell" style={shellStyle}>
+    <div
+      className={`campaign-shell campaign-shell--${backgroundStyle}`}
+      style={shellStyle}
+    >
       <div className="campaign-backdrop campaign-backdrop-top" />
       <div className="campaign-backdrop campaign-backdrop-bottom" />
 
@@ -947,15 +1114,14 @@ export default function LuckyWheel() {
                   disabled={isLoadingZaloPhone}
                   onClick={() => void handleFillPhoneFromZalo()}
                 >
-                  {isLoadingZaloPhone
-                    ? "Dang lay SDT..."
-                    : "Lấy số điện thoại"}
+                  {isLoadingZaloPhone ? "Dang lay SDT..." : "Lấy số điện thoại"}
                 </button>
               </div>
 
               {zaloProfile ? (
                 <div className="campaign-zalo-status">
-                  Đã liên kết: <strong>{zaloProfile.name ?? "Tài khoản Zalo"}</strong>
+                  Đã liên kết:{" "}
+                  <strong>{zaloProfile.name ?? "Tài khoản Zalo"}</strong>
                 </div>
               ) : null}
             </div>
@@ -1007,11 +1173,20 @@ export default function LuckyWheel() {
           <div className="campaign-wheel-header">
             <div className="campaign-kicker">{headerTitle}</div>
             <h1>{mainTitle}</h1>
+            {content.description ? (
+              <p className="campaign-wheel-description">
+                {content.description}
+              </p>
+            ) : null}
           </div>
 
           <div className="campaign-wheel-scene">
-            <div className="campaign-wheel-pointer" />
-            <div className="campaign-wheel-ring">
+            <div
+              className={`campaign-wheel-pointer campaign-wheel-pointer--${pointerPreset}`}
+            />
+            <div
+              className={`campaign-wheel-ring campaign-wheel-ring--${borderPreset}`}
+            >
               <div
                 className="campaign-wheel"
                 style={{
@@ -1028,6 +1203,20 @@ export default function LuckyWheel() {
 
                   setIsSpinning(false);
                   setWinner(pendingPrize);
+                  if (
+                    pendingPrize &&
+                    pendingResultType === "prize" &&
+                    spinResultId
+                  ) {
+                    setWonPrizeHistory((current) => [
+                      ...current,
+                      {
+                        spinResultId,
+                        label: pendingPrize.label,
+                        description: pendingPrize.description,
+                      },
+                    ]);
+                  }
                 }}
               >
                 {prizes.map((prize, index) => (
@@ -1038,26 +1227,19 @@ export default function LuckyWheel() {
                       transform: `rotate(${getPrizeAngle(index, prizes.length)}deg)`,
                     }}
                   >
-                    <div className="campaign-wheel-slice-content">
+                    <div
+                      className="campaign-wheel-slice-content"
+                      style={getPrizeContentStyle(index, prizes.length)}
+                    >
                       <strong>{prize.shortLabel}</strong>
                       <span>{prize.description ?? prize.label}</span>
                     </div>
                   </div>
                 ))}
 
-                <div className="campaign-wheel-bubbles">
-                  {prizes.map((prize, index) => (
-                    <span
-                      key={`${prize.code}-bubble`}
-                      className="campaign-wheel-bubble"
-                      style={getPrizeBubblePosition(index, prizes.length)}
-                    />
-                  ))}
-                </div>
-
                 <div className="campaign-wheel-center">
                   <div className="campaign-wheel-center-inner">
-                    <span>19T</span>
+                    <span>{centerLabel}</span>
                   </div>
                 </div>
               </div>
@@ -1073,6 +1255,37 @@ export default function LuckyWheel() {
             {isSpinning ? "Dang quay..." : spinButtonLabel}
           </button>
 
+          {previewNote ? (
+            <div className="campaign-wheel-note">{previewNote}</div>
+          ) : null}
+
+          {wonPrizeHistory.length > 0 ? (
+            <section className="campaign-panel campaign-won-history">
+              <div className="campaign-won-history-header">
+                <strong>Quà bạn đã trúng</strong>
+                <span>{wonPrizeHistory.length} phần quà</span>
+              </div>
+              <div className="campaign-won-history-list">
+                {wonPrizeHistory.map((item) => (
+                  <article
+                    key={item.spinResultId}
+                    className="campaign-won-history-item"
+                  >
+                    <div className="campaign-won-history-badge">
+                      #{item.spinResultId}
+                    </div>
+                    <div>
+                      <strong>{item.label}</strong>
+                      <span>
+                        {item.description ?? "Phần thưởng đã được ghi nhận."}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           {winner && (
             <div className="campaign-result-overlay">
               <div className="campaign-result-card">
@@ -1083,6 +1296,20 @@ export default function LuckyWheel() {
                   {winner.description ??
                     "Hệ thống đã ghi nhận phần thưởng của bạn. Vui lòng nhấn nút bên dưới để nhận phần thưởng."}
                 </span>
+                {typeof remainingSpins === "number" ? (
+                  <div className="campaign-zalo-status">
+                    Còn lại <strong>{remainingSpins}</strong> lượt quay
+                  </div>
+                ) : null}
+                {hasRemainingSpins ? (
+                  <button
+                    type="button"
+                    className="campaign-claim-button mb-4"
+                    onClick={handleContinueAfterWin}
+                  >
+                    {continueButtonLabel}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   className="campaign-claim-button"

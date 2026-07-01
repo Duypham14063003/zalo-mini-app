@@ -14,8 +14,10 @@ use App\Services\GameBuilderService;
 use App\Services\GameLaunchLinkService;
 use DomainException;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -67,6 +69,14 @@ class AdminGameController extends Controller
         }
 
         $game->load($relations);
+        $game->loadCount([
+            'players',
+            'prizes',
+            'spinResults as winning_results_count' => fn (Builder $query) => $query->where('result_type', 'prize'),
+            'spinResults as winning_players_count' => fn (Builder $query) => $query
+                ->select(DB::raw('count(distinct player_id)'))
+                ->where('result_type', 'prize'),
+        ]);
 
         $builderConfig = $this->gameBuilderService->ensureConfig($game);
         $step = $this->normaliseStep($request->query('step', $builderConfig->active_step));
@@ -259,6 +269,43 @@ class AdminGameController extends Controller
         ]);
     }
 
+    public function winners(Request $request, Game $game): View
+    {
+        $this->authorize('view', $game);
+
+        $keyword = $request->string('q')->toString();
+        $claimStatus = $request->query('claim_status');
+
+        $winners = SpinResult::query()
+            ->with(['player', 'prize', 'claim'])
+            ->where('game_id', $game->id)
+            ->where('result_type', 'prize')
+            ->when($claimStatus, fn ($query) => $query->where('claim_status', $claimStatus))
+            ->when(
+                filled($keyword),
+                fn ($query) => $query->whereHas('player', function ($playerQuery) use ($keyword) {
+                    $search = '%'.Str::lower($keyword).'%';
+
+                    $playerQuery->where(function ($inner) use ($search) {
+                        $inner
+                            ->whereRaw('LOWER(full_name) LIKE ?', [$search])
+                            ->orWhereRaw('LOWER(phone) LIKE ?', [$search])
+                            ->orWhereRaw('LOWER(email) LIKE ?', [$search]);
+                    });
+                })
+            )
+            ->latest('resolved_at')
+            ->paginate(15)
+            ->withQueryString();
+
+        return view('games.winners', [
+            'game' => $game,
+            'winners' => $winners,
+            'keyword' => $keyword,
+            'claimStatus' => $claimStatus,
+        ]);
+    }
+
     public function claims(Request $request, Game $game): View
     {
         $this->authorize('view', $game);
@@ -346,7 +393,9 @@ class AdminGameController extends Controller
         $webPreview = $launchLinks->firstWhere('channel', 'web_preview');
         $zaloMiniApp = $launchLinks->firstWhere('channel', 'zalo_mini_app');
         $summary = $this->gameLaunchLinkService->summarizeStatuses($game);
-        $isPublished = (bool) $game->published_at && $game->builderConfig?->publication_status === 'published';
+        $isPublished = (bool) $game->published_at
+            && $game->builderConfig?->publication_status === 'published'
+            && ($game->status?->value ?? $game->status) !== GameStatus::Draft->value;
 
         return [
             'public_id' => (string) ($game->publicIds()->where('is_primary', true)->value('public_id') ?: $game->publicIds()->value('public_id') ?: 'Chua co'),
@@ -427,6 +476,7 @@ class AdminGameController extends Controller
                     'target_type' => $request->input('presentation.redirect.target_type'),
                     'target_value' => $request->input('presentation.redirect.target_value'),
                     'fallback_value' => $request->input('presentation.redirect.fallback_value'),
+                    'message_template' => $request->input('presentation.redirect.message_template'),
                 ],
                 'fields' => collect($request->input('presentation.fields', []))
                     ->values()

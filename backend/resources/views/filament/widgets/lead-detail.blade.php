@@ -4,6 +4,7 @@
     $workspaceName = $submission->workspace?->name ?? 'Không xác định';
     $gameName = $submission->game?->name ?? 'Không xác định';
     $submittedAt = optional($submission->submitted_at)->format('d/m/Y H:i:s') ?? 'Chưa có';
+    $latestWinningPrize = $winningRows->first();
 @endphp
 
 <div style="padding: 8px 6px 12px;">
@@ -18,7 +19,7 @@
                         {{ $playerName }}
                     </h3>
                     <p style="margin: 0; font-size: 15px; color: #8a5b10;">
-                        {{ $playerPhone }}
+                        {{ $latestWinningPrize['label'] ?? $playerPhone }}
                     </p>
                 </div>
 
@@ -88,6 +89,42 @@
                         </div>
                     @endforelse
                 </div>
+            </div>
+        </div>
+
+        <div style="border: 1px solid #ececec; border-radius: 22px; background: #ffffff; box-shadow: 0 10px 26px rgba(15, 23, 42, 0.06); overflow: hidden;">
+            <div style="padding: 18px 20px; border-bottom: 1px solid #f3f4f6; font-size: 18px; font-weight: 800; color: #111827;">
+                Quà đã nhận
+            </div>
+
+            <div style="padding: 18px 20px 20px; display: grid; gap: 12px;">
+                @forelse ($winningRows as $row)
+                    <div style="border: 1px solid #fde8b2; background: #fffaf0; border-radius: 18px; padding: 14px 16px;">
+                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;">
+                            <div>
+                                <div style="font-size: 12px; font-weight: 800; color: #b7791f; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px;">
+                                    Phần thưởng
+                                </div>
+                                <div style="font-size: 18px; line-height: 1.4; font-weight: 800; color: #1f2937; word-break: break-word;">
+                                    {{ $row['label'] }}
+                                </div>
+                            </div>
+                            <div style="border-radius: 999px; background: #fff1c9; color: #ae7414; padding: 6px 10px; font-size: 11px; font-weight: 800; text-transform: uppercase; white-space: nowrap;">
+                                {{ $row['claim_status'] }}
+                            </div>
+                        </div>
+                        <div style="margin-top: 8px; font-size: 14px; line-height: 1.5; color: #4b5563;">
+                            {{ $row['description'] }}
+                        </div>
+                        <div style="margin-top: 10px; font-size: 12px; color: #9ca3af;">
+                            Thời gian trúng: {{ $row['resolved_at'] }}
+                        </div>
+                    </div>
+                @empty
+                    <div style="border: 1px dashed #d1d5db; background: #fafafa; border-radius: 18px; padding: 20px; font-size: 14px; color: #6b7280;">
+                        Lead này chưa có phần thưởng nào được ghi nhận.
+                    </div>
+                @endforelse
             </div>
         </div>
     </div>

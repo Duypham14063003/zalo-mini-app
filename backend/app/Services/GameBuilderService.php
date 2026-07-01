@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\GameStatus;
 use App\Models\Game;
 use App\Models\GameBuilderConfig;
 use Illuminate\Support\Arr;
@@ -139,6 +140,7 @@ class GameBuilderService
                     'target_type' => $game->redirects->sortByDesc('is_primary')->first()?->target_type,
                     'target_value' => $game->redirects->sortByDesc('is_primary')->first()?->target_value,
                     'fallback_value' => $game->redirects->sortByDesc('is_primary')->first()?->fallback_value,
+                    'message_template' => $game->redirects->sortByDesc('is_primary')->first()?->message_template,
                 ],
                 'fields' => $game->formFields
                     ->sortBy('sort_order')
@@ -179,7 +181,7 @@ class GameBuilderService
 
     public function publish(Game $game, GameBuilderConfig $config): GameBuilderConfig
     {
-        $draft = $config->draft_config ?? [];
+        $draft = $this->normalizeDraftForPublication($config->draft_config ?? []);
         $this->assertPublishReady($draft);
 
         DB::transaction(function () use ($game, $config, $draft) {
@@ -187,6 +189,7 @@ class GameBuilderService
 
             $config->update([
                 'publication_status' => 'published',
+                'draft_config' => $draft,
                 'published_config' => $draft,
                 'published_at' => now(),
                 'last_saved_at' => now(),
@@ -213,10 +216,15 @@ class GameBuilderService
     {
         $draft = $config->draft_config ?? [];
 
+        if ($config->publication_status === 'published') {
+            $draft = $this->normalizeDraftForPublication($draft);
+        }
+
         DB::transaction(function () use ($game, $config, $draft) {
             $this->syncDraftToRuntime($game, $draft);
 
             $attributes = [
+                'draft_config' => $draft,
                 'last_saved_at' => now(),
             ];
 
@@ -233,7 +241,12 @@ class GameBuilderService
 
     public function unpublish(Game $game, GameBuilderConfig $config): GameBuilderConfig
     {
+        $draft = $this->normalizeDraftForDraftState($config->draft_config ?? []);
+
+        $this->syncDraftToRuntime($game, $draft);
+
         $config->update([
+            'draft_config' => $draft,
             'publication_status' => 'draft',
             'published_config' => null,
             'published_at' => null,
@@ -345,6 +358,7 @@ class GameBuilderService
                 'target_type' => data_get($redirect, 'target_type'),
                 'target_value' => data_get($redirect, 'target_value'),
                 'fallback_value' => data_get($redirect, 'fallback_value'),
+                'message_template' => data_get($redirect, 'message_template'),
             ],
         );
 
@@ -478,5 +492,31 @@ class GameBuilderService
         }
 
         return 'Phần thưởng '.($index + 1);
+    }
+
+    /**
+     * @param  array<string, mixed>  $draft
+     * @return array<string, mixed>
+     */
+    protected function normalizeDraftForPublication(array $draft): array
+    {
+        $status = data_get($draft, 'general.status');
+
+        if ($status === null || $status === '' || $status === GameStatus::Draft->value) {
+            data_set($draft, 'general.status', GameStatus::Active->value);
+        }
+
+        return $draft;
+    }
+
+    /**
+     * @param  array<string, mixed>  $draft
+     * @return array<string, mixed>
+     */
+    protected function normalizeDraftForDraftState(array $draft): array
+    {
+        data_set($draft, 'general.status', GameStatus::Draft->value);
+
+        return $draft;
     }
 }

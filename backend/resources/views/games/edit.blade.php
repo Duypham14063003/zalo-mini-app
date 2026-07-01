@@ -3,6 +3,9 @@
     $rewards = old('rewards', $draftConfig['rewards'] ?? []);
     $design = old('design', $draftConfig['design'] ?? []);
     $presentation = old('presentation', $draftConfig['presentation'] ?? []);
+    $isPublished = (bool) $game->published_at
+        && ($builderConfig->publication_status ?? 'draft') === 'published'
+        && (($game->status?->value ?? $game->status) !== 'draft');
     $previewState = [
         'general' => $general,
         'rewards' => $rewards,
@@ -33,6 +36,7 @@
                 </div>
                 <div class="flex flex-wrap gap-3">
                     <a href="{{ route('games.reward-codes', $game) }}" class="admin-secondary-btn">Reward codes</a>
+                    <a href="{{ route('games.winners', $game) }}" class="admin-secondary-btn">Nguoi trung qua</a>
                     <a href="{{ route('games.activity', $game) }}" class="admin-secondary-btn">Spin history</a>
                     <a href="{{ route('games.claims', $game) }}" class="admin-secondary-btn">Claims</a>
                 </div>
@@ -61,6 +65,29 @@
                 @csrf
                 @method('PATCH')
                 <input type="hidden" name="step" value="{{ $step }}">
+
+                <section class="grid gap-4 md:grid-cols-4">
+                    <div class="admin-stat-card bg-white">
+                        <p class="text-sm text-slate-500">Nguoi choi</p>
+                        <p class="mt-3 text-3xl font-semibold text-slate-900">{{ $game->players_count ?? 0 }}</p>
+                        <p class="mt-2 text-sm text-slate-400">Tong player cua game</p>
+                    </div>
+                    <div class="admin-stat-card bg-white">
+                        <p class="text-sm text-slate-500">Phan thuong</p>
+                        <p class="mt-3 text-3xl font-semibold text-slate-900">{{ $game->prizes_count ?? 0 }}</p>
+                        <p class="mt-2 text-sm text-slate-400">Prize dang cau hinh</p>
+                    </div>
+                    <div class="admin-stat-card bg-white">
+                        <p class="text-sm text-slate-500">Nguoi trung qua</p>
+                        <p class="mt-3 text-3xl font-semibold text-slate-900">{{ $game->winning_players_count ?? 0 }}</p>
+                        <p class="mt-2 text-sm text-slate-400">Player duy nhat da trung</p>
+                    </div>
+                    <div class="admin-stat-card bg-white">
+                        <p class="text-sm text-slate-500">Luot trung</p>
+                        <p class="mt-3 text-3xl font-semibold text-slate-900">{{ $game->winning_results_count ?? 0 }}</p>
+                        <p class="mt-2 text-sm text-slate-400">Tong ket qua quay trung thuong</p>
+                    </div>
+                </section>
 
                 @if ($step === 'general')
                     <section class="admin-panel p-6">
@@ -360,6 +387,10 @@
                                     <label class="admin-label">Fallback value</label>
                                     <input name="presentation[redirect][fallback_value]" value="{{ data_get($presentation, 'redirect.fallback_value') }}" class="admin-soft-input">
                                 </div>
+                                <div class="md:col-span-2">
+                                    <label class="admin-label">OA message</label>
+                                    <textarea name="presentation[redirect][message_template]" rows="3" class="admin-soft-input" placeholder="Xin chao, toi muon nhan qua tu mini app">{{ data_get($presentation, 'redirect.message_template') }}</textarea>
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -384,7 +415,7 @@
                         @endif
                         @if ($step === 'publish')
                             <button type="submit" name="intent" value="regenerate_launch" class="admin-secondary-btn">Tao lai link</button>
-                            @if (($builderConfig->publication_status ?? 'draft') === 'published')
+                            @if ($isPublished)
                                 <button type="submit" name="intent" value="unpublish" class="admin-secondary-btn">Unpublish</button>
                             @else
                                 <button type="submit" name="intent" value="publish" class="admin-primary-btn">Publish game</button>
@@ -402,7 +433,7 @@
                             <p class="mt-1 text-sm text-slate-500">Preview nhanh theo draft hien tai.</p>
                         </div>
                         <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase text-slate-500">
-                            {{ $builderConfig->publication_status }}
+                            {{ $isPublished ? 'published' : 'draft' }}
                         </span>
                     </div>
                     <div class="p-6">
@@ -448,7 +479,7 @@
                     <div class="mt-4 space-y-3 text-sm text-slate-600">
                         <div class="flex items-center justify-between">
                             <span>Trang thai</span>
-                            <span class="font-semibold uppercase">{{ $builderConfig->publication_status }}</span>
+                            <span class="font-semibold uppercase">{{ $isPublished ? 'published' : 'draft' }}</span>
                         </div>
                         <div class="flex items-center justify-between">
                             <span>Last saved</span>

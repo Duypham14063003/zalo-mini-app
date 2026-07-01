@@ -6,6 +6,7 @@
                 <p class="mt-1 text-sm text-slate-500">{{ $game->name }}</p>
             </div>
             <div class="flex flex-wrap gap-3">
+                <a href="{{ route('games.winners', $game) }}" class="admin-secondary-btn">Nguoi trung qua</a>
                 <a href="{{ route('games.claims', $game) }}" class="admin-secondary-btn">Claims</a>
                 <a href="{{ route('games.edit', $game) }}" class="admin-primary-btn">Mo builder</a>
             </div>
