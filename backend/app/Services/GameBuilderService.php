@@ -122,12 +122,22 @@ class GameBuilderService
                 'secondary_color' => $game->theme?->secondary_color ?? '#fff8e4',
                 'accent_color' => $game->theme?->accent_color ?? '#d79e2f',
                 'palette_preset' => Arr::get($themeTokens, 'wheel.palette_preset', 'mint'),
+                'background_preset_id' => Arr::get($themeTokens, 'assets.background.preset_id'),
                 'border_preset' => Arr::get($themeTokens, 'wheel.border_preset', 'pink-star'),
+                'wheel_border_preset_id' => Arr::get($themeTokens, 'assets.wheel_border.preset_id'),
                 'border_asset_path' => Arr::get($themeTokens, 'wheel.border_asset_path'),
                 'pointer_preset' => Arr::get($themeTokens, 'wheel.pointer_preset', 'teardrop-gold'),
+                'wheel_pointer_preset_id' => Arr::get($themeTokens, 'assets.wheel_pointer.preset_id'),
+                'wheel_pointer_asset_path' => Arr::get($themeTokens, 'assets.wheel_pointer.asset_path'),
                 'center_label' => Arr::get($themeTokens, 'wheel.center_label', '19T'),
                 'background_style' => $game->theme?->background_style ?? 'warm_gradient',
                 'background_asset_path' => $game->theme?->background_asset_path,
+                'banner_preset_id' => Arr::get($themeTokens, 'assets.banner.preset_id'),
+                'banner_asset_path' => Arr::get($themeTokens, 'assets.banner.asset_path'),
+                'spin_button_preset_id' => Arr::get($themeTokens, 'assets.spin_button.preset_id'),
+                'spin_button_asset_path' => Arr::get($themeTokens, 'assets.spin_button.asset_path'),
+                'extra_spin_button_preset_id' => Arr::get($themeTokens, 'assets.extra_spin_button.preset_id'),
+                'extra_spin_button_asset_path' => Arr::get($themeTokens, 'assets.extra_spin_button.asset_path'),
                 'preview_note' => Arr::get($themeTokens, 'wheel.preview_note', 'Quay ngay'),
             ],
             'presentation' => [
@@ -314,6 +324,32 @@ class GameBuilderService
                 'theme_tokens' => [
                     'button_color' => data_get($design, 'primary_color', '#f9c667'),
                     'text_color' => '#6f4910',
+                    'assets' => [
+                        'background' => [
+                            'preset_id' => data_get($design, 'background_preset_id'),
+                            'asset_path' => data_get($design, 'background_asset_path'),
+                        ],
+                        'banner' => [
+                            'preset_id' => data_get($design, 'banner_preset_id'),
+                            'asset_path' => data_get($design, 'banner_asset_path'),
+                        ],
+                        'spin_button' => [
+                            'preset_id' => data_get($design, 'spin_button_preset_id'),
+                            'asset_path' => data_get($design, 'spin_button_asset_path'),
+                        ],
+                        'extra_spin_button' => [
+                            'preset_id' => data_get($design, 'extra_spin_button_preset_id'),
+                            'asset_path' => data_get($design, 'extra_spin_button_asset_path'),
+                        ],
+                        'wheel_border' => [
+                            'preset_id' => data_get($design, 'wheel_border_preset_id'),
+                            'asset_path' => data_get($design, 'border_asset_path'),
+                        ],
+                        'wheel_pointer' => [
+                            'preset_id' => data_get($design, 'wheel_pointer_preset_id'),
+                            'asset_path' => data_get($design, 'wheel_pointer_asset_path'),
+                        ],
+                    ],
                     'wheel' => [
                         'palette_preset' => data_get($design, 'palette_preset', 'mint'),
                         'border_preset' => data_get($design, 'border_preset', 'pink-star'),
@@ -459,9 +495,19 @@ class GameBuilderService
         return array_merge($config, [
             'preview' => [
                 'slice_colors' => $sliceColors,
+                'background_preset_id' => data_get($config, 'design.background_preset_id'),
+                'banner_preset_id' => data_get($config, 'design.banner_preset_id'),
+                'banner_asset_path' => data_get($config, 'design.banner_asset_path'),
+                'spin_button_preset_id' => data_get($config, 'design.spin_button_preset_id'),
+                'spin_button_asset_path' => data_get($config, 'design.spin_button_asset_path'),
+                'extra_spin_button_preset_id' => data_get($config, 'design.extra_spin_button_preset_id'),
+                'extra_spin_button_asset_path' => data_get($config, 'design.extra_spin_button_asset_path'),
                 'border_preset' => data_get($config, 'design.border_preset', 'pink-star'),
+                'wheel_border_preset_id' => data_get($config, 'design.wheel_border_preset_id'),
                 'border_asset_path' => data_get($config, 'design.border_asset_path'),
                 'pointer_preset' => data_get($config, 'design.pointer_preset', 'teardrop-gold'),
+                'wheel_pointer_preset_id' => data_get($config, 'design.wheel_pointer_preset_id'),
+                'wheel_pointer_asset_path' => data_get($config, 'design.wheel_pointer_asset_path'),
                 'background_style' => data_get($config, 'design.background_style', 'warm_gradient'),
                 'background_asset_path' => data_get($config, 'design.background_asset_path'),
             ],

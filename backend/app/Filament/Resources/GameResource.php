@@ -6,6 +6,7 @@ use App\Enums\GameStatus;
 use App\Filament\Resources\GameResource\Pages\EditGame;
 use App\Filament\Resources\GameResource\Pages\ListGames;
 use App\Models\Game;
+use App\Services\WorkspaceThemeAssetService;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
@@ -25,6 +26,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Facades\Storage;
 
@@ -121,20 +123,17 @@ class GameResource extends Resource
                         ->schema([
                             Section::make('Giao diện vòng quay')
                                 ->schema([
-                                    ColorPicker::make('primary_color')
-                                        ->label('Màu chính')
-                                        ->required()
+                                    Hidden::make('primary_color')
                                         ->default('#f9c667')
-                                        ->live(),
-                                    ColorPicker::make('secondary_color')
-                                        ->label('Màu phụ')
                                         ->required()
+                                        ->live(),
+                                    Hidden::make('secondary_color')
                                         ->default('#fff8e4')
-                                        ->live(),
-                                    ColorPicker::make('accent_color')
-                                        ->label('Màu nhấn')
                                         ->required()
+                                        ->live(),
+                                    Hidden::make('accent_color')
                                         ->default('#d79e2f')
+                                        ->required()
                                         ->live(),
                                     Hidden::make('palette_preset')
                                         ->default('mint')
@@ -150,60 +149,144 @@ class GameResource extends Resource
                                         ])
                                         ->dehydrated(false)
                                         ->live(),
+                                    Hidden::make('background_preset_id')
+                                        ->live(),
+                                    ViewField::make('background_preset_picker')
+                                        ->label('Hình nền game')
+                                        ->view('filament.forms.wheel-option-picker')
+                                        ->viewData([
+                                            'options' => static::workspaceAssetPickerCatalog('background'),
+                                            'variant' => 'background',
+                                            'targetStatePath' => 'data.background_preset_id',
+                                        ])
+                                        ->dehydrated(false)
+                                        ->live(),
+                                    FileUpload::make('background_asset_path')
+                                        ->label('Upload hình nền riêng')
+                                        ->disk('public')
+                                        ->directory(fn () => app(WorkspaceThemeAssetService::class)->storageDirectory(static::currentWorkspaceId(), 'background'))
+                                        ->visibility('public')
+                                        ->image()
+                                        ->imageEditor()
+                                        ->helperText('Ưu tiên ảnh upload của game này. Nếu để trống sẽ dùng preset dùng chung, sau đó mới fallback sang nền mặc định cũ.')
+                                        ->live(),
                                     Hidden::make('border_preset')
                                         ->default('pink-star')
                                         ->required()
                                         ->live(),
-                                    ViewField::make('border_preset_picker')
+                                    Hidden::make('wheel_border_preset_id')
+                                        ->live(),
+                                    ViewField::make('wheel_border_preset_picker')
                                         ->label('Viền vòng quay')
                                         ->view('filament.forms.wheel-option-picker')
                                         ->viewData([
-                                            'options' => static::borderPresetCatalog(),
+                                            'options' => static::workspaceAssetPickerCatalog('wheel_border'),
                                             'variant' => 'border',
-                                            'targetStatePath' => 'data.border_preset',
+                                            'targetStatePath' => 'data.wheel_border_preset_id',
                                         ])
                                         ->dehydrated(false)
                                         ->live(),
                                     FileUpload::make('border_asset_path')
                                         ->label('Upload viền ngoài')
                                         ->disk('public')
-                                        ->directory('wheel-borders')
+                                        ->directory(fn () => app(WorkspaceThemeAssetService::class)->storageDirectory(static::currentWorkspaceId(), 'wheel_border'))
                                         ->visibility('public')
                                         ->image()
                                         ->imageEditor()
-                                        ->helperText('Nếu có ảnh upload, preview và mobile sẽ ưu tiên ảnh này thay vì preset viền mặc định.')
+                                        ->helperText('Nếu có ảnh upload, preview và mobile sẽ ưu tiên ảnh này thay vì preset dùng chung.')
                                         ->live(),
                                     Hidden::make('pointer_preset')
                                         ->default('teardrop-gold')
                                         ->dehydrated()
+                                        ->live(),
+                                    Hidden::make('wheel_pointer_preset_id')
+                                        ->live(),
+                                    ViewField::make('wheel_pointer_preset_picker')
+                                        ->label('Mũi tên vòng quay')
+                                        ->view('filament.forms.wheel-option-picker')
+                                        ->viewData([
+                                            'options' => static::workspaceAssetPickerCatalog('wheel_pointer'),
+                                            'variant' => 'pointer',
+                                            'targetStatePath' => 'data.wheel_pointer_preset_id',
+                                        ])
+                                        ->dehydrated(false)
+                                        ->live(),
+                                    FileUpload::make('wheel_pointer_asset_path')
+                                        ->label('Upload mũi tên riêng')
+                                        ->disk('public')
+                                        ->directory(fn () => app(WorkspaceThemeAssetService::class)->storageDirectory(static::currentWorkspaceId(), 'wheel_pointer'))
+                                        ->visibility('public')
+                                        ->acceptedFileTypes(['image/png'])
+                                        ->image()
+                                        ->helperText('Slot mũi tên chỉ nhận PNG để hiển thị đúng trong mini app.')
                                         ->live(),
                                     TextInput::make('center_label')
                                         ->label('Nhãn trung tâm')
                                         ->required()
                                         ->default('19T')
                                         ->live(),
-                                    Hidden::make('background_style')
-                                        ->default('warm_gradient')
-                                        ->required()
+                                    Hidden::make('banner_preset_id')
                                         ->live(),
-                                    ViewField::make('background_style_picker')
-                                        ->label('Nền')
+                                    ViewField::make('banner_preset_picker')
+                                        ->label('Banner trên')
                                         ->view('filament.forms.wheel-option-picker')
                                         ->viewData([
-                                            'options' => static::backgroundPresetCatalog(),
+                                            'options' => static::workspaceAssetPickerCatalog('banner'),
                                             'variant' => 'background',
-                                            'targetStatePath' => 'data.background_style',
+                                            'targetStatePath' => 'data.banner_preset_id',
                                         ])
                                         ->dehydrated(false)
                                         ->live(),
-                                    FileUpload::make('background_asset_path')
-                                        ->label('Upload background')
+                                    FileUpload::make('banner_asset_path')
+                                        ->label('Upload banner riêng')
                                         ->disk('public')
-                                        ->directory('wheel-backgrounds')
+                                        ->directory(fn () => app(WorkspaceThemeAssetService::class)->storageDirectory(static::currentWorkspaceId(), 'banner'))
                                         ->visibility('public')
                                         ->image()
-                                        ->imageEditor()
-                                        ->helperText('Nếu có ảnh upload, preview và mobile sẽ ưu tiên ảnh này thay vì preset nền mặc định.')
+                                        ->helperText('Banner là ảnh tĩnh hiển thị phía trên vòng quay.')
+                                        ->live(),
+                                    Hidden::make('spin_button_preset_id')
+                                        ->live(),
+                                    ViewField::make('spin_button_preset_picker')
+                                        ->label('Nút quay thưởng')
+                                        ->view('filament.forms.wheel-option-picker')
+                                        ->viewData([
+                                            'options' => static::workspaceAssetPickerCatalog('spin_button'),
+                                            'variant' => 'border',
+                                            'targetStatePath' => 'data.spin_button_preset_id',
+                                        ])
+                                        ->dehydrated(false)
+                                        ->live(),
+                                    FileUpload::make('spin_button_asset_path')
+                                        ->label('Upload nút quay riêng')
+                                        ->disk('public')
+                                        ->directory(fn () => app(WorkspaceThemeAssetService::class)->storageDirectory(static::currentWorkspaceId(), 'spin_button'))
+                                        ->visibility('public')
+                                        ->image()
+                                        ->live(),
+                                    Hidden::make('extra_spin_button_preset_id')
+                                        ->live(),
+                                    ViewField::make('extra_spin_button_preset_picker')
+                                        ->label('Nút thêm lượt')
+                                        ->view('filament.forms.wheel-option-picker')
+                                        ->viewData([
+                                            'options' => static::workspaceAssetPickerCatalog('extra_spin_button'),
+                                            'variant' => 'border',
+                                            'targetStatePath' => 'data.extra_spin_button_preset_id',
+                                        ])
+                                        ->dehydrated(false)
+                                        ->live(),
+                                    FileUpload::make('extra_spin_button_asset_path')
+                                        ->label('Upload nút thêm lượt riêng')
+                                        ->disk('public')
+                                        ->directory(fn () => app(WorkspaceThemeAssetService::class)->storageDirectory(static::currentWorkspaceId(), 'extra_spin_button'))
+                                        ->visibility('public')
+                                        ->image()
+                                        ->helperText('Nút này chỉ hiện khi người chơi đã hết lượt quay.')
+                                        ->live(),
+                                    Hidden::make('background_style')
+                                        ->default('warm_gradient')
+                                        ->required()
                                         ->live(),
                                     TextInput::make('preview_note')
                                         ->label('Ghi chú xem trước')
@@ -213,13 +296,34 @@ class GameResource extends Resource
                                         ->label('Xem trước giao diện')
                                         ->columnSpanFull()
                                         ->content(function ($get): HtmlString {
+                                            $record = static::currentGameRecord();
+                                            $assetSelections = app(WorkspaceThemeAssetService::class)->builderAssetSelections($record, [
+                                                'background_preset_id' => $get('background_preset_id'),
+                                                'background_asset_path' => $get('background_asset_path'),
+                                                'banner_preset_id' => $get('banner_preset_id'),
+                                                'banner_asset_path' => $get('banner_asset_path'),
+                                                'spin_button_preset_id' => $get('spin_button_preset_id'),
+                                                'spin_button_asset_path' => $get('spin_button_asset_path'),
+                                                'extra_spin_button_preset_id' => $get('extra_spin_button_preset_id'),
+                                                'extra_spin_button_asset_path' => $get('extra_spin_button_asset_path'),
+                                                'wheel_border_preset_id' => $get('wheel_border_preset_id'),
+                                                'border_asset_path' => $get('border_asset_path'),
+                                                'wheel_pointer_preset_id' => $get('wheel_pointer_preset_id'),
+                                                'wheel_pointer_asset_path' => $get('wheel_pointer_asset_path'),
+                                            ]);
                                             $primary = (string) ($get('primary_color') ?: '#f9c667');
                                             $secondary = (string) ($get('secondary_color') ?: '#fff8e4');
                                             $accent = (string) ($get('accent_color') ?: '#d79e2f');
                                             $centerLabel = e((string) ($get('center_label') ?: '19T'));
                                             $previewNote = e((string) ($get('preview_note') ?: 'Quay ngay'));
-                                            $customBorderUrl = static::storageAssetUrl($get('border_asset_path'));
-                                            $customBackgroundUrl = static::storageAssetUrl($get('background_asset_path'));
+                                            $wheelBorderUrl = $assetSelections['wheel_border']['preview_url']
+                                                ?? static::storageAssetUrl($get('border_asset_path'));
+                                            $backgroundUrl = $assetSelections['background']['preview_url']
+                                                ?? static::storageAssetUrl($get('background_asset_path'));
+                                            $bannerUrl = $assetSelections['banner']['preview_url'] ?? null;
+                                            $spinButtonUrl = $assetSelections['spin_button']['preview_url'] ?? null;
+                                            $extraSpinButtonUrl = $assetSelections['extra_spin_button']['preview_url'] ?? null;
+                                            $pointerUrl = $assetSelections['wheel_pointer']['preview_url'] ?? null;
                                             $palettePreset = match ((string) $get('palette_preset')) {
                                                 'marine' => ['#7dc4ff', '#ffb15c', '#8fd0ff', '#ff9a4d', '#85b8f8', '#ffc56f'],
                                                 'soft-pop' => ['#f8b3d0', '#ffe08a', '#a6d8ff', '#ffb49d', '#cab8ff', '#9fe3c2'],
@@ -241,83 +345,44 @@ class GameResource extends Resource
                                                 : null;
 
                                             return new HtmlString(sprintf(
-                                                '<div style="border-radius:24px; border:1px solid #f2e6c5; background:#fffdfa; padding:20px; box-shadow:0 18px 40px rgba(125, 90, 20, 0.08);">
-                                                    <div style="display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;">
-                                                        <div style="flex:0 0 300px; max-width:300px; margin-inline:auto;">
-                                                            <div style="border-radius:32px; padding:18px; background:%s; box-shadow:0 24px 40px rgba(217, 169, 54, 0.14); overflow:hidden;">
-                                                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
-                                                                    <div style="font-size:12px; font-weight:700; color:#4b5563;">Mini App Preview</div>
-                                                                    <div style="padding:8px 14px; border-radius:999px; border:1px solid rgba(17,24,39,0.08); background:rgba(255,255,255,0.72); font-size:12px; color:#374151;">••• | ✕</div>
-                                                                </div>
-                                                                <div style="text-align:center; margin-bottom:16px;">
-                                                                    <div style="font-size:15px; font-weight:700; color:%s;">Uống an lành, góp ngàn</div>
-                                                                    <div style="font-size:34px; line-height:1; font-style:italic; font-weight:500; color:%s; margin-top:8px;">Yêu Thương</div>
-                                                                </div>
-                                                                <div style="position:relative; width:210px; height:210px; margin:0 auto;">
-                                                                    <div style="position:absolute; inset:0; border-radius:999px; padding:10px; background:%s; box-shadow:0 16px 26px rgba(217, 169, 54, 0.22);">
-                                                                        <div style="position:relative; width:100%%; height:100%%; border-radius:999px; overflow:hidden; background:%s; border:8px solid rgba(255,255,255,0.85);">
-                                                                            <div style="position:absolute; inset:0; border-radius:999px; background:%s;"></div>
-                                                                            <div style="position:absolute; inset:0; border-radius:999px; background:repeating-conic-gradient(from -90deg, rgba(255,255,255,0.18) 0deg 58deg, rgba(255,255,255,0) 58deg 60deg);"></div>
-                                                                            %s
-                                                                            <div style="position:absolute; inset:50%% auto auto 50%%; transform:translate(-50%%, -50%%); width:72px; height:72px; border-radius:999px; background:%s; border:8px solid rgba(255,255,255,0.72); display:flex; align-items:center; justify-content:center; box-shadow:0 10px 18px rgba(217, 169, 54, 0.22);">
-                                                                                <span style="font-size:20px; font-weight:800; color:#9a5a18;">%s</span>
-                                                                            </div>
+                                                '<div style="display:flex; justify-content:flex-start; align-items:flex-start;">
+                                                    <div style="flex:0 0 390px; width:390px; max-width:100%%; margin-right:auto;">
+                                                        <div style="border-radius:36px; padding:22px; min-height:680px; background:%s; box-shadow:0 24px 40px rgba(217, 169, 54, 0.14); overflow:hidden;">
+                                                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                                                                <div style="font-size:12px; font-weight:700; color:#4b5563;">Mini App Preview</div>
+                                                                <div style="padding:8px 14px; border-radius:999px; border:1px solid rgba(17,24,39,0.08); background:rgba(255,255,255,0.72); font-size:12px; color:#374151;">••• | ✕</div>
+                                                            </div>
+                                                            <div style="text-align:center; margin-bottom:12px;">
+                                                                %s
+                                                            </div>
+                                                            <div style="position:relative; width:250px; height:250px; margin:0 auto;">
+                                                                %s
+                                                                <div style="position:absolute; inset:0; border-radius:999px; padding:10px; background:%s; box-shadow:0 16px 26px rgba(217, 169, 54, 0.22);">
+                                                                    <div style="position:relative; width:100%%; height:100%%; border-radius:999px; overflow:hidden; background:%s; border:8px solid rgba(255,255,255,0.85);">
+                                                                        <div style="position:absolute; inset:0; border-radius:999px; background:%s;"></div>
+                                                                        <div style="position:absolute; inset:0; border-radius:999px; background:repeating-conic-gradient(from -90deg, rgba(255,255,255,0.18) 0deg 58deg, rgba(255,255,255,0) 58deg 60deg);"></div>
+                                                                        %s
+                                                                        <div style="position:absolute; inset:50%% auto auto 50%%; transform:translate(-50%%, -50%%); width:72px; height:72px; border-radius:999px; background:%s; border:8px solid rgba(255,255,255,0.72); display:flex; align-items:center; justify-content:center; box-shadow:0 10px 18px rgba(217, 169, 54, 0.22);">
+                                                                            <span style="font-size:20px; font-weight:800; color:#9a5a18;">%s</span>
                                                                         </div>
                                                                     </div>
                                                                 </div>
-                                                                <div style="margin-top:18px; text-align:center;">
-                                                                    <button type="button" style="border:none; border-radius:14px; padding:12px 24px; background:linear-gradient(180deg, %s 0%%, #8f1ea9 100%%); color:#fff; font-size:18px; font-weight:800; box-shadow:0 14px 22px rgba(121, 28, 149, 0.22);">%s</button>
-                                                                </div>
                                                             </div>
-                                                        </div>
-                                                        <div style="flex:1 1 340px; min-width:280px; display:grid; gap:14px;">
-                                                            <div style="border-radius:20px; border:1px solid #f1e6c8; background:#fff; padding:16px;">
-                                                                <div style="font-size:16px; font-weight:800; color:#111827; margin-bottom:8px;">Preview người dùng sẽ thấy</div>
-                                                                <div style="font-size:14px; color:#6b7280; line-height:1.6;">Preview này mô phỏng nhanh bố cục màn hình quay để người tạo game dễ cảm nhận màu sắc và cảm giác tổng thể trước khi xuất bản.</div>
-                                                            </div>
-                                                            <div style="display:flex; gap:12px; flex-wrap:wrap;">
-                                                                <div style="flex:1 1 170px; border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
-                                                                    <div style="font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em;">Màu chính</div>
-                                                                    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-                                                                        <span style="display:inline-block; width:18px; height:18px; border-radius:999px; background:%s; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,0.08);"></span>
-                                                                        <strong style="font-size:14px; color:#374151;">%s</strong>
-                                                                    </div>
-                                                                </div>
-                                                                <div style="flex:1 1 170px; border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
-                                                                    <div style="font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em;">Màu phụ</div>
-                                                                    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-                                                                        <span style="display:inline-block; width:18px; height:18px; border-radius:999px; background:%s; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,0.08);"></span>
-                                                                        <strong style="font-size:14px; color:#374151;">%s</strong>
-                                                                    </div>
-                                                                </div>
-                                                                <div style="flex:1 1 170px; border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
-                                                                    <div style="font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em;">Màu nhấn</div>
-                                                                    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
-                                                                        <span style="display:inline-block; width:18px; height:18px; border-radius:999px; background:%s; border:2px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,0.08);"></span>
-                                                                        <strong style="font-size:14px; color:#374151;">%s</strong>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            <div style="display:flex; gap:12px; flex-wrap:wrap;">
-                                                                <div style="flex:1 1 170px; border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
-                                                                    <div style="font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em;">Preset</div>
-                                                                    <div style="margin-top:8px; font-size:15px; font-weight:700; color:#374151;">%s</div>
-                                                                </div>
-                                                                <div style="flex:1 1 170px; border-radius:18px; border:1px solid #f2ead7; background:#fff; padding:14px;">
-                                                                    <div style="font-size:12px; color:#9ca3af; text-transform:uppercase; letter-spacing:0.08em;">Nhãn trung tâm</div>
-                                                                    <div style="margin-top:8px; font-size:15px; font-weight:700; color:#374151;">%s</div>
-                                                                </div>
+                                                            <div style="margin-bottom:14px; text-align:center; transform:translateY(-18px);">
+                                                                %s
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>',
-                                                $customBackgroundUrl
-                                                    ? 'center / cover no-repeat url('.e($customBackgroundUrl).'), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.10))'
+                                                $backgroundUrl
+                                                    ? 'center / cover no-repeat url('.e($backgroundUrl).'), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.10))'
                                                     : e($background),
-                                                e($accent),
-                                                e($accent),
-                                                $customBorderUrl
-                                                    ? 'transparent url('.e($customBorderUrl).') center / contain no-repeat'
+                                                $bannerUrl
+                                                    ? sprintf('<img src="%s" alt="Banner preview" style="display:block; width:100%%; height:86px; object-fit:contain; margin:0 auto 10px;" />', e($bannerUrl))
+                                                    : '',
+                                                '',
+                                                $wheelBorderUrl
+                                                    ? 'transparent url('.e($wheelBorderUrl).') center / contain no-repeat'
                                                     : ($selectedPresetAsset
                                                         ? 'transparent'
                                                         : 'linear-gradient(135deg, #ff5034 0%, #ff9d29 48%, #ffdc72 100%)'),
@@ -326,21 +391,14 @@ class GameResource extends Resource
                                                 $selectedPresetAsset
                                                     ? sprintf(
                                                         '<div style="position:absolute; inset:0; border-radius:999px; background:center / contain no-repeat url(%s);"></div>',
-                                                        e($customBorderUrl ?: $selectedPresetAsset)
+                                                        e($wheelBorderUrl ?: $selectedPresetAsset)
                                                     )
                                                     : '',
                                                 e($secondary),
                                                 $centerLabel,
-                                                e($accent),
-                                                $previewNote,
-                                                e($primary),
-                                                e($primary),
-                                                e($secondary),
-                                                e($secondary),
-                                                e($accent),
-                                                e($accent),
-                                                e((string) $get('palette_preset')),
-                                                $centerLabel,
+                                                $spinButtonUrl
+                                                    ? sprintf('<div style="display:flex; justify-content:center; align-items:center; width:100%%;"><img src="%s" alt="Spin button preview" style="display:block; width:164px; max-width:100%%; margin:0; object-fit:contain; flex:0 0 auto;" /></div>', e($spinButtonUrl))
+                                                    : sprintf('<button type="button" style="border:none; border-radius:14px; padding:12px 24px; background:linear-gradient(180deg, %s 0%%, #8f1ea9 100%%); color:#fff; font-size:18px; font-weight:800; box-shadow:0 14px 22px rgba(121, 28, 149, 0.22);">%s</button>', e($accent), $previewNote),
                                             ));
                                         }),
                                 ])
@@ -350,12 +408,24 @@ class GameResource extends Resource
                         ->schema([
                             Section::make('Nội dung hiển thị')
                                 ->schema([
-                                    TextInput::make('title')->label('Tiêu đề')->required(),
-                                    TextInput::make('subtitle')->label('Tiêu đề phụ')->required(),
-                                    Textarea::make('presentation_description')->label('Mô tả hiển thị')->rows(3)->columnSpanFull(),
-                                    TextInput::make('spin_button')->label('Nút quay ngay')->required(),
-                                    TextInput::make('continue_button')->label('Nút tiếp tục')->required(),
-                                    TextInput::make('loading_message')->label('Thông báo đang tải')->required(),
+                                    TextInput::make('title')
+                                        ->label('Tiêu đề')
+                                        ->required(),
+                                    TextInput::make('subtitle')
+                                        ->label('Tiêu đề phụ')
+                                        ->required(),
+                                    Textarea::make('presentation_description')
+                                        ->label('Mô tả hiển thị')
+                                        ->rows(4),
+                                    TextInput::make('spin_button')
+                                        ->label('Nút quay ngay')
+                                        ->required(),
+                                    TextInput::make('continue_button')
+                                        ->label('Nút tiếp tục')
+                                        ->required(),
+                                    TextInput::make('loading_message')
+                                        ->label('Thông báo đang tải')
+                                        ->required(),
                                 ])
                                 ->columns(2),
                             Section::make('Biểu mẫu người chơi')
@@ -656,5 +726,47 @@ class GameResource extends Resource
         }
 
         return Storage::disk('public')->url($value);
+    }
+
+    public static function currentGameRecord(): ?Game
+    {
+        $record = request()->route('record');
+
+        if ($record instanceof Game) {
+            return $record;
+        }
+
+        if ($record instanceof Model && $record->getKey()) {
+            return Game::query()->find($record->getKey());
+        }
+
+        if (filled($record)) {
+            return Game::query()->find($record);
+        }
+
+        return null;
+    }
+
+    public static function currentWorkspaceId(): ?int
+    {
+        return static::currentGameRecord()?->workspace_id;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public static function workspaceAssetPickerCatalog(string $slotType): array
+    {
+        $service = app(WorkspaceThemeAssetService::class);
+
+        return collect($service->pickerOptionsForWorkspace(static::currentWorkspaceId(), $slotType))
+            ->mapWithKeys(fn (array $option) => [
+                (string) $option['id'] => [
+                    'label' => $option['label'],
+                    'preview_url' => $option['preview_url'],
+                    'asset_path' => $option['asset_path'],
+                ],
+            ])
+            ->all();
     }
 }

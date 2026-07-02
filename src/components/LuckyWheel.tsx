@@ -22,6 +22,7 @@ import "@/css/lucky-wheel.scss";
 type Stage = "booting" | "form" | "loading" | "wheel" | "unavailable";
 
 type Theme = {
+  updated_at?: string | null;
   primary_color?: string | null;
   secondary_color?: string | null;
   accent_color?: string | null;
@@ -31,12 +32,28 @@ type Theme = {
   wheel?: {
     palettePreset?: string | null;
     borderPreset?: string | null;
+    borderPresetId?: number | null;
     borderAssetPath?: string | null;
     borderAssetUrl?: string | null;
     pointerPreset?: string | null;
+    pointerPresetId?: number | null;
+    pointerAssetPath?: string | null;
+    pointerAssetUrl?: string | null;
     centerLabel?: string | null;
     previewNote?: string | null;
   } | null;
+  assets?: Record<
+    string,
+    {
+      slotType?: string | null;
+      presetId?: number | null;
+      overridePath?: string | null;
+      assetPath?: string | null;
+      assetUrl?: string | null;
+      label?: string | null;
+      source?: string | null;
+    }
+  > | null;
   theme_tokens?: {
     button_color?: string | null;
     text_color?: string | null;
@@ -149,6 +166,79 @@ type ClaimResponse = {
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000/api";
+const API_ORIGIN = (() => {
+  try {
+    return new URL(API_BASE_URL).origin;
+  } catch {
+    return window.location.origin;
+  }
+})();
+
+function normalizeRuntimeAssetUrl(value: string | null | undefined) {
+  const nextValue = value?.trim();
+
+  if (!nextValue) {
+    return null;
+  }
+
+  if (nextValue.startsWith("data:")) {
+    return nextValue;
+  }
+
+  try {
+    if (/^https?:\/\//i.test(nextValue)) {
+      const parsed = new URL(nextValue);
+
+      return `${API_ORIGIN}${parsed.pathname}${parsed.search}${parsed.hash}`;
+    }
+
+    if (nextValue.startsWith("/")) {
+      return `${API_ORIGIN}${nextValue}`;
+    }
+
+    return `${API_ORIGIN}/${nextValue.replace(/^\/+/, "")}`;
+  } catch {
+    return nextValue;
+  }
+}
+
+function appendCacheKey(
+  value: string | null | undefined,
+  cacheKey: string | null | undefined,
+) {
+  const nextValue = value?.trim();
+  const nextCacheKey = cacheKey?.trim();
+
+  if (!nextValue || !nextCacheKey) {
+    return nextValue ?? null;
+  }
+
+  try {
+    const parsed = new URL(nextValue, window.location.origin);
+    parsed.searchParams.set("v", nextCacheKey);
+    return parsed.toString();
+  } catch {
+    const separator = nextValue.includes("?") ? "&" : "?";
+    return `${nextValue}${separator}v=${encodeURIComponent(nextCacheKey)}`;
+  }
+}
+
+function logAssetLoadError(label: string, url: string | null) {
+  console.error(`[LuckyWheel] Asset load failed: ${label}`, {
+    url,
+    apiBaseUrl: API_BASE_URL,
+    apiOrigin: API_ORIGIN,
+  });
+}
+
+function hideBrokenImage(
+  event: React.SyntheticEvent<HTMLImageElement>,
+  label: string,
+  url: string | null,
+) {
+  logAssetLoadError(label, url);
+  event.currentTarget.style.display = "none";
+}
 const FALLBACK_GAME_IDENTIFIER =
   import.meta.env.VITE_GAME_IDENTIFIER ?? "ohar-yeu-thuong";
 const PRIZE_TONES = [
@@ -215,7 +305,7 @@ function getPrizeContentStyle(
   const segmentAngle = 360 / Math.max(prizeCount, 1);
 
   return {
-    transform: `translate(-50%, -50%) rotate(${segmentAngle / 2}deg) translateY(-122px)`,
+    transform: `translate(-50%, -50%) rotate(${segmentAngle / 2}deg) translateY(-108px)`,
     width: prizeCount <= 4 ? "34%" : "28%",
   };
 }
@@ -297,7 +387,7 @@ function getRequiredFieldErrors(
     const value = formData[field.fieldKey]?.trim() ?? "";
 
     if (field.isRequired && value.length === 0) {
-      accumulator[field.fieldKey] = "Vui long nhap thong tin nay";
+      accumulator[field.fieldKey] = "Vui lòng nhập thông tin này";
       return accumulator;
     }
 
@@ -307,7 +397,7 @@ function getRequiredFieldErrors(
       Array.isArray(field.options) &&
       !field.options.includes(value)
     ) {
-      accumulator[field.fieldKey] = "Gia tri khong hop le";
+      accumulator[field.fieldKey] = "Giá trị không hợp lệ";
       return accumulator;
     }
 
@@ -316,7 +406,7 @@ function getRequiredFieldErrors(
       value.length > 0 &&
       !/\S+@\S+\.\S+/.test(value)
     ) {
-      accumulator[field.fieldKey] = "Email khong hop le";
+      accumulator[field.fieldKey] = "Email không hợp lệ";
       return accumulator;
     }
 
@@ -325,7 +415,7 @@ function getRequiredFieldErrors(
       value.length > 0 &&
       !/^[0-9+\s-]{8,15}$/.test(value)
     ) {
-      accumulator[field.fieldKey] = "So dien thoai khong hop le";
+      accumulator[field.fieldKey] = "Số điện thoại không hợp lệ";
     }
 
     return accumulator;
@@ -431,13 +521,21 @@ function buildSpinIdempotencyKey(playerPublicId: string, submissionId: number) {
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers ?? {});
+  headers.set("ngrok-skip-browser-warning", "true");
+
+  const method = (init?.method ?? "GET").toUpperCase();
+  const hasBody = init?.body !== undefined && init?.body !== null;
+
+  if (hasBody && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      "ngrok-skip-browser-warning": "true",
-      ...(init?.headers ?? {}),
-    },
+    cache: init?.cache ?? "no-store",
+    headers,
+    method,
   });
 
   const data = (await response.json().catch(() => ({}))) as T & {
@@ -568,14 +666,47 @@ export default function LuckyWheel() {
   const content = bootstrap?.content ?? {};
   const backgroundStyle = bootstrap?.theme?.background_style ?? "warm_gradient";
   const wheelTheme = bootstrap?.theme?.wheel ?? null;
-  const backgroundAssetUrl =
-    bootstrap?.theme?.background_asset_url?.trim() || null;
+  const themeAssets = bootstrap?.theme?.assets ?? null;
+  const themeAssetVersion = bootstrap?.theme?.updated_at ?? null;
+  const backgroundAssetUrl = appendCacheKey(
+    normalizeRuntimeAssetUrl(
+      themeAssets?.background?.assetUrl ??
+        bootstrap?.theme?.background_asset_url ??
+        null,
+    ),
+    themeAssetVersion,
+  );
+  const bannerAssetUrl = appendCacheKey(
+    normalizeRuntimeAssetUrl(themeAssets?.banner?.assetUrl ?? null),
+    themeAssetVersion,
+  );
+  const spinButtonAssetUrl = appendCacheKey(
+    normalizeRuntimeAssetUrl(themeAssets?.spin_button?.assetUrl ?? null),
+    themeAssetVersion,
+  );
+  const extraSpinButtonAssetUrl = appendCacheKey(
+    normalizeRuntimeAssetUrl(themeAssets?.extra_spin_button?.assetUrl ?? null),
+    themeAssetVersion,
+  );
   const paletteTones = useMemo(
     () => getPaletteTones(wheelTheme?.palettePreset),
     [wheelTheme?.palettePreset],
   );
   const borderPreset = wheelTheme?.borderPreset ?? "classic-red";
-  const borderAssetUrl = wheelTheme?.borderAssetUrl?.trim() || null;
+  const borderAssetUrl = appendCacheKey(
+    normalizeRuntimeAssetUrl(
+      themeAssets?.wheel_border?.assetUrl ?? wheelTheme?.borderAssetUrl ?? null,
+    ),
+    themeAssetVersion,
+  );
+  const pointerAssetUrl = appendCacheKey(
+    normalizeRuntimeAssetUrl(
+      themeAssets?.wheel_pointer?.assetUrl ??
+        wheelTheme?.pointerAssetUrl ??
+        null,
+    ),
+    themeAssetVersion,
+  );
   const centerLabel = wheelTheme?.centerLabel?.trim() || "19T";
   const previewNote = wheelTheme?.previewNote?.trim() || "";
   const shellStyle = useMemo(
@@ -607,11 +738,34 @@ export default function LuckyWheel() {
 
         if (!response.available) {
           setUnavailableMessage(
-            response.message ?? "Tro choi tam thoi chua san sang",
+            response.message ?? "Trò chơi tạm thời không khả dụng",
           );
           setStage("unavailable");
           return;
         }
+
+        console.info("[LuckyWheel] Bootstrap loaded", {
+          apiBaseUrl: API_BASE_URL,
+          gameIdentifier,
+          backgroundAssetUrl: normalizeRuntimeAssetUrl(
+            response.theme?.assets?.background?.assetUrl ??
+              response.theme?.background_asset_url ??
+              null,
+          ),
+          bannerAssetUrl: normalizeRuntimeAssetUrl(
+            response.theme?.assets?.banner?.assetUrl ?? null,
+          ),
+          borderAssetUrl: normalizeRuntimeAssetUrl(
+            response.theme?.assets?.wheel_border?.assetUrl ??
+              response.theme?.wheel?.borderAssetUrl ??
+              null,
+          ),
+          pointerAssetUrl: normalizeRuntimeAssetUrl(
+            response.theme?.assets?.wheel_pointer?.assetUrl ??
+              response.theme?.wheel?.pointerAssetUrl ??
+              null,
+          ),
+        });
 
         setBootstrap(response);
         setPrizes(
@@ -623,8 +777,11 @@ export default function LuckyWheel() {
         setFormData(buildInitialForm(response.formFields));
         setStage("form");
       } catch (error) {
+        console.error("[LuckyWheel] Bootstrap failed", error);
         const message =
-          error instanceof Error ? error.message : "Khong tai duoc tro choi";
+          error instanceof Error
+            ? error.message
+            : "Không tải được dữ liệu trò chơi";
         setUnavailableMessage(message);
         setStage("unavailable");
       }
@@ -646,11 +803,11 @@ export default function LuckyWheel() {
     Object.keys(getRequiredFieldErrors(formFields, formData)).length === 0;
 
   const headerTitle =
-    content.subtitle ?? bootstrap?.game.name ?? "Vong quay uu dai";
-  const mainTitle = content.title ?? "Yeu Thuong";
+    content.subtitle ?? bootstrap?.game.name ?? "vòng quay ưu đãi";
+  const mainTitle = content.title ?? "yêu Thương";
   const spinButtonLabel = content.spin_button ?? "Quay ngay";
-  const continueButtonLabel = content.continue_button ?? "Tiep tuc";
-  const loadingLabel = content.loading_message ?? "Dang tai...";
+  const continueButtonLabel = content.continue_button ?? "Tiếp tục";
+  const loadingLabel = content.loading_message ?? "Đang tải...";
   const hasRemainingSpins = (remainingSpins ?? 0) > 0;
 
   const applyAutofillValues = async (
@@ -716,14 +873,14 @@ export default function LuckyWheel() {
             ? { [nameFieldKey]: userInfo.name }
             : {}),
         },
-        "Da cap nhat thong tin tu Zalo",
-        "Thong tin Zalo da co, cac o hien tai khong con trong de cap nhat",
+        "Đã cập nhật thông tin từ Zalo",
+        "Thông tin Zalo đã có, các ô hiện tại không còn trống để cập nhật",
       );
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Khong the ket noi thong tin Zalo";
+          : "Không thể kết nối thông tin Zalo";
       await showToast({ message });
     } finally {
       setIsLoadingZaloProfile(false);
@@ -752,15 +909,15 @@ export default function LuckyWheel() {
 
         if (!phoneFieldKey) {
           await showToast({
-            message: "Da lay so dien thoai Zalo, nhung form nay khong co o SDT",
+            message: "Đã lấy số điện thoại Zalo, nhưng form này không có ô SDT",
           });
           return;
         }
 
         await applyAutofillValues(
           { [phoneFieldKey]: number },
-          "Da cap nhat so dien thoai tu Zalo",
-          "So dien thoai da co, o SDT hien tai khong con trong de cap nhat",
+          "Đã cập nhật số điện thoại từ Zalo",
+          "Số điện thoại đã có, ô SDT hiện tại không còn trống để cập nhật",
         );
 
         return;
@@ -769,14 +926,14 @@ export default function LuckyWheel() {
       await showToast({
         message:
           token && !number
-            ? "Da cap quyen SDT. Moi truong nay chi tra token, he thong se dinh danh user khi gui form"
-            : "Khong lay duoc so dien thoai tu Zalo",
+            ? "Đã cấp quyền SDT. ôi trường này chỉ trả token, hệ thống sẽ định danh user khi gửi form"
+            : "Không lấy được số điện thoại từ Zalo",
       });
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "Khong the lay so dien thoai tu Zalo";
+          : "Không thể lấy số điện thoại từ Zalo";
       await showToast({ message });
     } finally {
       setIsLoadingZaloPhone(false);
@@ -943,7 +1100,7 @@ export default function LuckyWheel() {
       setRotation(finalRotation);
     } catch (error) {
       setIsSpinning(false);
-      const message = error instanceof Error ? error.message : "Khong the quay";
+      const message = error instanceof Error ? error.message : "Không thể quay";
       await showToast({ message });
     }
   };
@@ -971,11 +1128,11 @@ export default function LuckyWheel() {
         claim.redirectTarget ?? claim.metadata?.fallback_value ?? null,
       );
 
-      await showToast({ message: "Dang mo qua cua ban..." });
+      await showToast({ message: "Đang mở quà của bạn..." });
       await runClaimAction(claim);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Khong xu ly duoc phan thuong";
+        error instanceof Error ? error.message : "Không thể xử lý phần thưởng";
 
       try {
         await showToast({ message });
@@ -1086,11 +1243,11 @@ export default function LuckyWheel() {
               <strong>{bootstrap.game.slug}</strong>
             </div>
             <div className="campaign-meta-row">
-              <span>So phan thuong</span>
+              <span>Số phần thưởng</span>
               <strong>{prizes.length}</strong>
             </div>
             <div className="campaign-meta-row">
-              <span>Luot quay</span>
+              <span>Lượt quay</span>
               <strong>{bootstrap.rules?.maxSpinsPerPlayer ?? 1}</strong>
             </div>
           </div>
@@ -1113,7 +1270,7 @@ export default function LuckyWheel() {
                   onClick={() => void handleConnectZalo()}
                 >
                   {isLoadingZaloProfile
-                    ? "Dang ket noi..."
+                    ? "Đang kết nối..."
                     : "Đăng nhập bằng Zalo"}
                 </button>
 
@@ -1123,7 +1280,9 @@ export default function LuckyWheel() {
                   disabled={isLoadingZaloPhone}
                   onClick={() => void handleFillPhoneFromZalo()}
                 >
-                  {isLoadingZaloPhone ? "Dang lay SDT..." : "Lấy số điện thoại"}
+                  {isLoadingZaloPhone
+                    ? "Đang lấy số điện thoại..."
+                    : "Lấy số điện thoại"}
                 </button>
               </div>
 
@@ -1159,7 +1318,7 @@ export default function LuckyWheel() {
               disabled={!isFormValid || isSubmitting}
               onClick={() => void handleContinue()}
             >
-              {isSubmitting ? "Dang gui..." : continueButtonLabel}
+              {isSubmitting ? "Đang gửi..." : continueButtonLabel}
             </button>
           </div>
         </section>
@@ -1180,12 +1339,15 @@ export default function LuckyWheel() {
       {stage === "wheel" && bootstrap && (
         <section className="campaign-page campaign-wheel-page">
           <div className="campaign-wheel-header">
-            <div className="campaign-kicker">{headerTitle}</div>
-            <h1>{mainTitle}</h1>
-            {content.description ? (
-              <p className="campaign-wheel-description">
-                {content.description}
-              </p>
+            {bannerAssetUrl ? (
+              <img
+                src={bannerAssetUrl}
+                alt=""
+                className="campaign-banner-image"
+                onError={(event) =>
+                  hideBrokenImage(event, "banner(wheel)", bannerAssetUrl)
+                }
+              />
             ) : null}
           </div>
 
@@ -1196,18 +1358,10 @@ export default function LuckyWheel() {
                   ? "campaign-wheel-ring campaign-wheel-ring--custom"
                   : `campaign-wheel-ring campaign-wheel-ring--${borderPreset}`
               }
-              style={
-                borderAssetUrl
-                  ? {
-                      background: `center / contain no-repeat url("${borderAssetUrl}")`,
-                    }
-                  : undefined
-              }
             >
               <div
-                className="campaign-wheel"
+                className={`campaign-wheel-rotor${borderAssetUrl ? " campaign-wheel-rotor--with-custom-border" : ""}`}
                 style={{
-                  background: buildWheelBackground(prizes),
                   transform: `rotate(${rotation}deg)`,
                   transition: isSpinning
                     ? "transform 5.2s cubic-bezier(0.18, 0.92, 0.18, 1)"
@@ -1236,6 +1390,21 @@ export default function LuckyWheel() {
                   }
                 }}
               >
+                {borderAssetUrl ? (
+                  <div
+                    className="campaign-wheel-border-overlay"
+                    style={{
+                      background: `center / contain no-repeat url("${borderAssetUrl}")`,
+                    }}
+                  />
+                ) : null}
+
+                <div
+                  className={`campaign-wheel${borderAssetUrl ? " campaign-wheel--with-custom-border" : ""}`}
+                  style={{
+                    background: buildWheelBackground(prizes),
+                  }}
+                >
                 {prizes.map((prize, index) => (
                   <div
                     key={prize.code}
@@ -1253,28 +1422,47 @@ export default function LuckyWheel() {
                     </div>
                   </div>
                 ))}
-
-                <div className="campaign-wheel-center">
-                  <div className="campaign-wheel-center-inner">
-                    <span>{centerLabel}</span>
-                  </div>
                 </div>
+              </div>
+            </div>
+            <div className="campaign-wheel-center">
+              <div className="campaign-wheel-center-inner">
+                {pointerAssetUrl ? (
+                  <img
+                    src={pointerAssetUrl}
+                    alt=""
+                    className="campaign-wheel-center-pointer"
+                    onError={(event) =>
+                      hideBrokenImage(event, "pointer", pointerAssetUrl)
+                    }
+                  />
+                ) : (
+                  <span>{centerLabel}</span>
+                )}
               </div>
             </div>
           </div>
 
           <button
             type="button"
-            className="campaign-spin-button"
+            className={`campaign-spin-button${spinButtonAssetUrl ? " campaign-spin-button--image" : ""}`}
             onClick={() => void handleSpin()}
             disabled={isSpinning}
+            aria-label={spinButtonLabel}
           >
-            {isSpinning ? "Dang quay..." : spinButtonLabel}
+            {spinButtonAssetUrl ? (
+              <img
+                src={spinButtonAssetUrl}
+                alt=""
+                className="campaign-button-image"
+                onError={(event) =>
+                  hideBrokenImage(event, "spin-button", spinButtonAssetUrl)
+                }
+              />
+            ) : (
+              <span aria-hidden="true" />
+            )}
           </button>
-
-          {previewNote ? (
-            <div className="campaign-wheel-note">{previewNote}</div>
-          ) : null}
 
           {wonPrizeHistory.length > 0 ? (
             <section className="campaign-panel campaign-won-history">
@@ -1325,6 +1513,26 @@ export default function LuckyWheel() {
                     onClick={handleContinueAfterWin}
                   >
                     {continueButtonLabel}
+                  </button>
+                ) : null}
+                {!hasRemainingSpins && extraSpinButtonAssetUrl ? (
+                  <button
+                    type="button"
+                    className="campaign-claim-button campaign-claim-button--image mb-4"
+                    onClick={() => void handleClaimPrize()}
+                    disabled={isClaiming}
+                  >
+                    <img
+                      src={extraSpinButtonAssetUrl}
+                      alt="Thêm lượt"
+                      className="campaign-button-image"
+                      onError={() =>
+                        logAssetLoadError(
+                          "extra-spin-button",
+                          extraSpinButtonAssetUrl,
+                        )
+                      }
+                    />
                   </button>
                 ) : null}
                 <button

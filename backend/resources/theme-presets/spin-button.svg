@@ -1,0 +1,11 @@
+<svg width="200" height="100" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="spinBtn" x1="100" y1="0" x2="100" y2="100" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B545F4"/>
+      <stop offset="1" stop-color="#7C1DB5"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="188" height="88" rx="32" fill="url(#spinBtn)"/>
+  <rect x="10" y="10" width="180" height="80" rx="28" stroke="#F0C5FF" stroke-opacity="0.55" stroke-width="2"/>
+  <text x="100" y="58" text-anchor="middle" font-size="30" font-weight="800" fill="white" font-family="Arial, sans-serif">Quay ngay</text>
+</svg>

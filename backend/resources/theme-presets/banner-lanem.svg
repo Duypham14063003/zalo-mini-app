@@ -1,0 +1,15 @@
+<svg width="470" height="200" viewBox="0 0 470 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bannerBg" x1="0" y1="0" x2="470" y2="200" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF3D1"/>
+      <stop offset="0.55" stop-color="#FFE0A5"/>
+      <stop offset="1" stop-color="#FFD07A"/>
+    </linearGradient>
+  </defs>
+  <rect width="470" height="200" rx="36" fill="url(#bannerBg)"/>
+  <circle cx="75" cy="100" r="54" fill="#FFF8E8" fill-opacity="0.72"/>
+  <circle cx="396" cy="52" r="28" fill="#FFFFFF" fill-opacity="0.54"/>
+  <circle cx="420" cy="138" r="18" fill="#FFFFFF" fill-opacity="0.48"/>
+  <text x="235" y="84" text-anchor="middle" font-size="30" font-weight="700" fill="#D7972B" font-family="Arial, sans-serif">Ưu đãi vòng quay</text>
+  <text x="235" y="136" text-anchor="middle" font-size="62" font-style="italic" font-weight="700" fill="#F08A9D" font-family="Georgia, serif">LanEm</text>
+</svg>

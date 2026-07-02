@@ -22,7 +22,8 @@
                     $isPointer = $variant === 'pointer';
                     $isBackground = $variant === 'background';
                     $asset = $option['asset'] ?? null;
-                    $assetSrc = $asset ? \App\Filament\Resources\GameResource::wheelAssetDataUri($asset) : null;
+                    $previewUrl = $option['preview_url'] ?? null;
+                    $assetSrc = $previewUrl ?: ($asset ? \App\Filament\Resources\GameResource::wheelAssetDataUri($asset) : null);
                     $shape = $option['shape'] ?? null;
                     $background = $option['background'] ?? null;
                     $overlay = $option['overlay'] ?? null;
@@ -52,7 +53,7 @@
                                 <span style="display: block; height: 52px; background: {{ $color }};"></span>
                             @endforeach
                         </div>
-                    @elseif ($isPointer)
+                    @elseif ($isPointer && ! $assetSrc)
                         <div
                             class="rounded-xl bg-slate-50"
                             style="display: flex; height: 120px; align-items: center; justify-content: center;"
@@ -67,6 +68,17 @@
                                     background: {{ $background }};
                                 "
                             ></span>
+                        </div>
+                    @elseif ($isPointer && $assetSrc)
+                        <div
+                            class="rounded-xl bg-slate-50"
+                            style="display: flex; height: 120px; align-items: center; justify-content: center; padding: 8px;"
+                        >
+                            <img
+                                src="{{ $assetSrc }}"
+                                alt="{{ $option['label'] }}"
+                                style="display: block; width: auto; max-width: 86px; max-height: 104px; object-fit: contain;"
+                            />
                         </div>
                     @elseif ($isBackground)
                         <div
@@ -114,5 +126,11 @@
                 </button>
             @endforeach
         </div>
+
+        @if (count($options) === 0)
+            <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                Chưa có
+            </div>
+        @endif
     </div>
 </x-dynamic-component>

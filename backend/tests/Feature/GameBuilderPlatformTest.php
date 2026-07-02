@@ -18,6 +18,8 @@ use App\Models\Prize;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceMembership;
+use App\Models\WorkspaceThemeAsset;
+use App\Services\GameBuilderService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -296,6 +298,95 @@ class GameBuilderPlatformTest extends TestCase
             ->assertJsonPath('theme.background_asset_path', 'wheel-backgrounds/custom-bg.png')
             ->assertJsonPath('theme.background_asset_url', Storage::disk('public')->url('wheel-backgrounds/custom-bg.png'))
             ->assertJsonPath('theme.wheel.pointerPreset', 'triangle-fire');
+    }
+
+    public function test_shared_theme_assets_are_visible_across_accounts(): void
+    {
+        $owner = User::query()->where('email', 'owner@example.com')->firstOrFail();
+        $game = Game::query()->where('slug', 'yeu-thuong')->firstOrFail();
+
+        WorkspaceThemeAsset::query()->create([
+            'workspace_id' => null,
+            'slot_type' => 'banner',
+            'display_name' => 'Shared Banner Only',
+            'asset_path' => 'workspace-theme-assets/banners/shared/shared-banner.svg',
+            'source_kind' => 'upload',
+            'is_active' => true,
+            'sort_order' => 1,
+        ]);
+
+        $this->actingAs($owner)
+            ->get("/admin/games/{$game->id}/edit")
+            ->assertOk()
+            ->assertSee('Banner LanEm')
+            ->assertSee('Shared Banner Only');
+
+        $this->assertSame(
+            1,
+            WorkspaceThemeAsset::query()
+                ->whereNull('workspace_id')
+                ->where('slot_type', 'banner')
+                ->where('display_name', 'Banner LanEm')
+                ->count(),
+        );
+    }
+
+    public function test_builder_asset_library_persists_selected_presets_and_bootstrap_resolves_runtime_assets(): void
+    {
+        $owner = User::query()->where('email', 'owner@example.com')->firstOrFail();
+        $game = Game::query()->where('slug', 'yeu-thuong')->firstOrFail();
+        $workspaceAssets = WorkspaceThemeAsset::query()
+            ->whereNull('workspace_id')
+            ->where('is_active', true)
+            ->get()
+            ->groupBy('slot_type');
+
+        Storage::disk('public')->put(
+            'workspace-theme-assets/banners/shared/custom-banner.svg',
+            '<svg xmlns="http://www.w3.org/2000/svg" width="470" height="200"><rect width="470" height="200" rx="24" fill="#ffffff"/><text x="235" y="110" text-anchor="middle" fill="#e26d5a" font-size="42">Custom Banner</text></svg>',
+        );
+
+        $this->actingAs($owner);
+
+        Livewire::test(EditGame::class, ['record' => $game->getRouteKey()])
+            ->set('data.background_preset_id', $workspaceAssets['background']->first()->id)
+            ->set('data.banner_preset_id', $workspaceAssets['banner']->first()->id)
+            ->set('data.banner_asset_path', 'workspace-theme-assets/banners/shared/custom-banner.svg')
+            ->set('data.spin_button_preset_id', $workspaceAssets['spin_button']->first()->id)
+            ->set('data.extra_spin_button_preset_id', $workspaceAssets['extra_spin_button']->first()->id)
+            ->set('data.wheel_border_preset_id', $workspaceAssets['wheel_border']->first()->id)
+            ->set('data.wheel_pointer_preset_id', $workspaceAssets['wheel_pointer']->first()->id)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $game->refresh();
+
+        $this->assertSame(
+            $workspaceAssets['background']->first()->id,
+            $game->builderConfig->draft_config['design']['background_preset_id'],
+        );
+        $this->assertSame(
+            $workspaceAssets['wheel_border']->first()->id,
+            $game->builderConfig->draft_config['design']['wheel_border_preset_id'],
+        );
+        $this->assertSame(
+            'workspace-theme-assets/banners/shared/custom-banner.svg',
+            $game->builderConfig->draft_config['design']['banner_asset_path'],
+        );
+
+        app(GameBuilderService::class)->publish($game, $game->builderConfig);
+
+        $this->getJson('/api/games/ohar-yeu-thuong/bootstrap')
+            ->assertOk()
+            ->assertJsonPath('theme.assets.background.presetId', $workspaceAssets['background']->first()->id)
+            ->assertJsonPath('theme.assets.background.assetUrl', Storage::disk('public')->url($workspaceAssets['background']->first()->asset_path))
+            ->assertJsonPath('theme.assets.banner.source', 'override')
+            ->assertJsonPath('theme.assets.banner.assetUrl', Storage::disk('public')->url('workspace-theme-assets/banners/shared/custom-banner.svg'))
+            ->assertJsonPath('theme.assets.spin_button.presetId', $workspaceAssets['spin_button']->first()->id)
+            ->assertJsonPath('theme.assets.extra_spin_button.presetId', $workspaceAssets['extra_spin_button']->first()->id)
+            ->assertJsonPath('theme.assets.wheel_border.presetId', $workspaceAssets['wheel_border']->first()->id)
+            ->assertJsonPath('theme.assets.wheel_pointer.presetId', $workspaceAssets['wheel_pointer']->first()->id)
+            ->assertJsonPath('theme.wheel.pointerAssetUrl', Storage::disk('public')->url($workspaceAssets['wheel_pointer']->first()->asset_path));
     }
 
     public function test_publish_generates_launch_links_for_preview_and_zalo_channels(): void

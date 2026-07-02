@@ -17,9 +17,11 @@ use App\Models\Prize;
 use App\Models\RewardCode;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceThemeAsset;
 use App\Observers\ConfigurationAuditObserver;
 use App\Policies\GamePolicy;
 use App\Policies\WorkspacePolicy;
+use App\Policies\WorkspaceThemeAssetPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -48,6 +50,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(Workspace::class, WorkspacePolicy::class);
         Gate::policy(Game::class, GamePolicy::class);
+        Gate::policy(WorkspaceThemeAsset::class, WorkspaceThemeAssetPolicy::class);
 
         foreach ([
             Account::class,
@@ -64,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
             RewardCode::class,
             Claim::class,
             IntegrationConnection::class,
+            WorkspaceThemeAsset::class,
         ] as $auditedModel) {
             $auditedModel::observe(ConfigurationAuditObserver::class);
         }

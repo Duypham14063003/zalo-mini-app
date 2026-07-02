@@ -20,6 +20,7 @@ use App\Models\Workspace;
 use App\Models\WorkspaceMembership;
 use App\Services\GameBuilderService;
 use App\Services\GameLaunchLinkService;
+use App\Services\WorkspaceThemeAssetService;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -88,6 +89,8 @@ class DatabaseSeeder extends Seeder
                 'is_primary' => false,
             ],
         );
+
+        app(WorkspaceThemeAssetService::class)->ensureStarterAssets();
 
         $game = Game::query()->updateOrCreate(
             ['workspace_id' => $workspace->id, 'slug' => 'yeu-thuong'],

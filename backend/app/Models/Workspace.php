@@ -63,4 +63,9 @@ class Workspace extends Model
     {
         return $this->hasMany(GameLaunchLink::class);
     }
+
+    public function themeAssets(): HasMany
+    {
+        return $this->hasMany(WorkspaceThemeAsset::class);
+    }
 }

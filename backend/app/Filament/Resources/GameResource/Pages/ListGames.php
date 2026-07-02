@@ -21,6 +21,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Services\WorkspaceThemeAssetService;
 
 class ListGames extends ListRecords
 {
@@ -179,6 +180,8 @@ class ListGames extends ListRecords
                     ],
                 );
             }
+
+            app(WorkspaceThemeAssetService::class)->ensureStarterAssets();
 
             return $workspace->id;
         });

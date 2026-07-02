@@ -73,6 +73,25 @@
   z-index: 1;
 }
 
+.campaign-asset-debug {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 30;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(22, 22, 28, 0.88);
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.45;
+  backdrop-filter: blur(8px);
+}
+
+.campaign-asset-debug strong {
+  color: #ffd76a;
+}
+
 .campaign-form-page,
 .campaign-unavailable-page {
   display: flex;
@@ -110,6 +129,13 @@
   font-size: 14px;
   line-height: 1.5;
   color: rgba(113, 73, 12, 0.8);
+}
+
+.campaign-banner-image {
+  display: block;
+  width: min(100%, 320px);
+  margin: 0 auto 12px;
+  object-fit: contain;
 }
 
 .campaign-panel {
@@ -402,9 +428,20 @@
 
 .campaign-wheel-ring--custom {
   background-color: transparent;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: contain;
+  padding: 0;
+}
+
+.campaign-wheel-rotor {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.campaign-wheel-border-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 .campaign-wheel {
@@ -418,6 +455,18 @@
   box-shadow:
     inset 0 0 0 3px rgba(255, 255, 255, 0.72),
     0 8px 24px rgba(180, 124, 24, 0.16);
+}
+
+.campaign-wheel--with-custom-border {
+  position: absolute;
+  inset: 10.4%;
+  width: auto;
+  height: auto;
+  border: 0;
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35),
+    0 4px 12px rgba(180, 124, 24, 0.1);
 }
 
 .campaign-wheel-slice {
@@ -460,7 +509,8 @@
 
 .campaign-wheel-center {
   position: absolute;
-  inset: 50%;
+  top: 50%;
+  left: 50%;
   width: 102px;
   height: 102px;
   transform: translate(-50%, -50%);
@@ -469,6 +519,8 @@
   border-radius: 50%;
   background: linear-gradient(180deg, #f8c561 0%, #efab37 100%);
   box-shadow: 0 16px 28px rgba(197, 133, 27, 0.24);
+  z-index: 6;
+  pointer-events: none;
 }
 
 .campaign-wheel-center-inner {
@@ -488,6 +540,13 @@
   letter-spacing: 0.04em;
 }
 
+.campaign-wheel-center-pointer {
+  display: block;
+  width: 74px;
+  height: 74px;
+  object-fit: contain;
+}
+
 .campaign-spin-button {
   min-width: 154px;
   min-height: 50px;
@@ -499,6 +558,22 @@
   font-size: 16px;
   font-weight: 800;
   box-shadow: 0 16px 26px rgba(115, 32, 170, 0.28);
+}
+
+.campaign-button-image {
+  display: block;
+  width: min(220px, 72vw);
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.campaign-spin-button--image {
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .campaign-wheel-note {
@@ -627,6 +702,13 @@
   font-size: 14px;
   line-height: 1.45;
   color: rgba(255, 248, 240, 0.78);
+}
+
+.campaign-claim-button--image {
+  background: transparent;
+  box-shadow: none;
+  min-height: 0;
+  padding: 0;
 }
 
 .campaign-unavailable-page .campaign-panel {

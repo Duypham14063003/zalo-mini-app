@@ -11,6 +11,7 @@ use App\Models\RewardCode;
 use App\Models\SpinResult;
 use App\Services\ClaimTransitionService;
 use App\Services\SpinAllocationService;
+use App\Services\WorkspaceThemeAssetService;
 use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class RuntimeGameController extends Controller
     public function __construct(
         protected SpinAllocationService $spinAllocationService,
         protected ClaimTransitionService $claimTransitionService,
+        protected WorkspaceThemeAssetService $workspaceThemeAssetService,
     ) {
     }
 
@@ -43,9 +45,7 @@ class RuntimeGameController extends Controller
         $publishedGeneral = $publishedConfig['general'] ?? [];
         $publishedPresentation = $publishedConfig['presentation'] ?? [];
         $publishedDesign = $publishedConfig['design'] ?? [];
-        $borderAssetPath = $publishedDesign['border_asset_path'] ?? null;
-        $borderPreset = $publishedDesign['border_preset'] ?? null;
-        $backgroundAssetPath = $publishedDesign['background_asset_path'] ?? ($game->theme?->background_asset_path);
+        $resolvedAssets = $this->workspaceThemeAssetService->resolveForGame($game, $publishedDesign);
         $backgroundStyle = $publishedDesign['background_style'] ?? ($game->theme?->background_style ?? 'warm_gradient');
 
         return response()->json([
@@ -59,18 +59,22 @@ class RuntimeGameController extends Controller
             ],
             'theme' => array_merge($game->theme?->toArray() ?? [], [
                 'background_style' => $backgroundStyle,
-                'background_asset_path' => $backgroundAssetPath,
-                'background_asset_url' => filled($backgroundAssetPath)
-                    ? Storage::disk('public')->url((string) $backgroundAssetPath)
-                    : $this->curatedBackgroundAssetUrl($backgroundStyle),
+                'background_asset_path' => $resolvedAssets['background']['assetPath']
+                    ?? ($publishedDesign['background_asset_path'] ?? ($game->theme?->background_asset_path)),
+                'background_asset_url' => $resolvedAssets['background']['assetUrl']
+                    ?? $this->curatedBackgroundAssetUrl($backgroundStyle),
+                'assets' => $resolvedAssets,
                 'wheel' => [
                     'palettePreset' => $publishedDesign['palette_preset'] ?? null,
-                    'borderPreset' => $borderPreset,
-                    'borderAssetPath' => $borderAssetPath,
-                    'borderAssetUrl' => filled($borderAssetPath)
-                        ? Storage::disk('public')->url((string) $borderAssetPath)
-                        : $this->curatedBorderAssetUrl($borderPreset),
+                    'borderPreset' => $publishedDesign['border_preset'] ?? null,
+                    'borderPresetId' => $publishedDesign['wheel_border_preset_id'] ?? null,
+                    'borderAssetPath' => $resolvedAssets['wheel_border']['assetPath'] ?? null,
+                    'borderAssetUrl' => $resolvedAssets['wheel_border']['assetUrl']
+                        ?? $this->curatedBorderAssetUrl($publishedDesign['border_preset'] ?? null),
                     'pointerPreset' => $publishedDesign['pointer_preset'] ?? null,
+                    'pointerPresetId' => $publishedDesign['wheel_pointer_preset_id'] ?? null,
+                    'pointerAssetPath' => $resolvedAssets['wheel_pointer']['assetPath'] ?? null,
+                    'pointerAssetUrl' => $resolvedAssets['wheel_pointer']['assetUrl'] ?? null,
                     'centerLabel' => $publishedDesign['center_label'] ?? null,
                     'previewNote' => $publishedDesign['preview_note'] ?? null,
                 ],
@@ -237,48 +241,28 @@ class RuntimeGameController extends Controller
 
     protected function curatedBorderAssetUrl(?string $preset): ?string
     {
-        $path = match ((string) $preset) {
-            'pink-star' => base_path('bg-vongquay/v4.png'),
-            'gold-ring' => base_path('bg-vongquay/v3.png'),
-            'violet-glow' => base_path('bg-vongquay/v1.png'),
-            default => base_path('bg-vongquay/v2.png'),
+        $storedPath = match ((string) $preset) {
+            'pink-star' => 'workspace-theme-assets/wheel-borders/shared/starter-wheel-pink-star.png',
+            'gold-ring' => 'workspace-theme-assets/wheel-borders/shared/starter-wheel-gold-ring.png',
+            'violet-glow' => 'workspace-theme-assets/wheel-borders/shared/starter-wheel-violet-glow.png',
+            default => 'workspace-theme-assets/wheel-borders/shared/starter-wheel-classic-red.png',
         };
 
-        if (! is_file($path)) {
-            return null;
-        }
-
-        $contents = file_get_contents($path);
-
-        if ($contents === false) {
-            return null;
-        }
-
-        $mimeType = mime_content_type($path) ?: 'image/png';
-
-        return 'data:'.$mimeType.';base64,'.base64_encode($contents);
+        return Storage::disk('public')->exists($storedPath)
+            ? Storage::disk('public')->url($storedPath)
+            : null;
     }
 
     protected function curatedBackgroundAssetUrl(?string $style): ?string
     {
-        $path = match ((string) $style) {
-            'bg_showcase' => base_path('bg/bg1.png'),
+        $storedPath = match ((string) $style) {
+            'bg_showcase' => 'workspace-theme-assets/backgrounds/shared/starter-bg-sunburst.png',
             default => null,
         };
 
-        if (! $path || ! is_file($path)) {
-            return null;
-        }
-
-        $contents = file_get_contents($path);
-
-        if ($contents === false) {
-            return null;
-        }
-
-        $mimeType = mime_content_type($path) ?: 'image/png';
-
-        return 'data:'.$mimeType.';base64,'.base64_encode($contents);
+        return $storedPath && Storage::disk('public')->exists($storedPath)
+            ? Storage::disk('public')->url($storedPath)
+            : null;
     }
 
     public function checkEligibility(Request $request, string $publicIdentifier): JsonResponse
