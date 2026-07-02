@@ -15,6 +15,7 @@ use DomainException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -42,6 +43,10 @@ class RuntimeGameController extends Controller
         $publishedGeneral = $publishedConfig['general'] ?? [];
         $publishedPresentation = $publishedConfig['presentation'] ?? [];
         $publishedDesign = $publishedConfig['design'] ?? [];
+        $borderAssetPath = $publishedDesign['border_asset_path'] ?? null;
+        $borderPreset = $publishedDesign['border_preset'] ?? null;
+        $backgroundAssetPath = $publishedDesign['background_asset_path'] ?? ($game->theme?->background_asset_path);
+        $backgroundStyle = $publishedDesign['background_style'] ?? ($game->theme?->background_style ?? 'warm_gradient');
 
         return response()->json([
             'available' => true,
@@ -53,9 +58,18 @@ class RuntimeGameController extends Controller
                 'publicIdentifier' => $publicId?->public_id ?? $publicIdentifier,
             ],
             'theme' => array_merge($game->theme?->toArray() ?? [], [
+                'background_style' => $backgroundStyle,
+                'background_asset_path' => $backgroundAssetPath,
+                'background_asset_url' => filled($backgroundAssetPath)
+                    ? Storage::disk('public')->url((string) $backgroundAssetPath)
+                    : $this->curatedBackgroundAssetUrl($backgroundStyle),
                 'wheel' => [
                     'palettePreset' => $publishedDesign['palette_preset'] ?? null,
-                    'borderPreset' => $publishedDesign['border_preset'] ?? null,
+                    'borderPreset' => $borderPreset,
+                    'borderAssetPath' => $borderAssetPath,
+                    'borderAssetUrl' => filled($borderAssetPath)
+                        ? Storage::disk('public')->url((string) $borderAssetPath)
+                        : $this->curatedBorderAssetUrl($borderPreset),
                     'pointerPreset' => $publishedDesign['pointer_preset'] ?? null,
                     'centerLabel' => $publishedDesign['center_label'] ?? null,
                     'previewNote' => $publishedDesign['preview_note'] ?? null,
@@ -219,6 +233,52 @@ class RuntimeGameController extends Controller
             'playerPublicId' => $player->public_id,
             'submissionId' => $submission->id,
         ], 201);
+    }
+
+    protected function curatedBorderAssetUrl(?string $preset): ?string
+    {
+        $path = match ((string) $preset) {
+            'pink-star' => base_path('bg-vongquay/v4.png'),
+            'gold-ring' => base_path('bg-vongquay/v3.png'),
+            'violet-glow' => base_path('bg-vongquay/v1.png'),
+            default => base_path('bg-vongquay/v2.png'),
+        };
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $contents = file_get_contents($path);
+
+        if ($contents === false) {
+            return null;
+        }
+
+        $mimeType = mime_content_type($path) ?: 'image/png';
+
+        return 'data:'.$mimeType.';base64,'.base64_encode($contents);
+    }
+
+    protected function curatedBackgroundAssetUrl(?string $style): ?string
+    {
+        $path = match ((string) $style) {
+            'bg_showcase' => base_path('bg/bg1.png'),
+            default => null,
+        };
+
+        if (! $path || ! is_file($path)) {
+            return null;
+        }
+
+        $contents = file_get_contents($path);
+
+        if ($contents === false) {
+            return null;
+        }
+
+        $mimeType = mime_content_type($path) ?: 'image/png';
+
+        return 'data:'.$mimeType.';base64,'.base64_encode($contents);
     }
 
     public function checkEligibility(Request $request, string $publicIdentifier): JsonResponse

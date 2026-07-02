@@ -8,6 +8,7 @@ use App\Filament\Resources\GameResource\Pages\ListGames;
 use App\Models\Game;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
@@ -15,6 +16,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\ViewField;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
@@ -24,6 +26,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Facades\Storage;
 
 class GameResource extends Resource
 {
@@ -133,52 +136,78 @@ class GameResource extends Resource
                                         ->required()
                                         ->default('#d79e2f')
                                         ->live(),
-                                    Select::make('palette_preset')
+                                    Hidden::make('palette_preset')
+                                        ->default('mint')
+                                        ->required()
+                                        ->live(),
+                                    ViewField::make('palette_preset_picker')
                                         ->label('Bộ màu nhanh')
-                                        ->options([
-                                            'sunrise' => 'Bình minh',
-                                            'marine' => 'Biển xanh',
-                                            'soft-pop' => 'Pastel nổi bật',
-                                            'mint' => 'Bạc hà',
-                                            'candy' => 'Kẹo ngọt',
-                                            'neon' => 'Neon',
+                                        ->view('filament.forms.wheel-option-picker')
+                                        ->viewData([
+                                            'options' => static::palettePresetCatalog(),
+                                            'variant' => 'palette',
+                                            'targetStatePath' => 'data.palette_preset',
                                         ])
-                                        ->live()
-                                        ->required(),
-                                    Select::make('border_preset')
+                                        ->dehydrated(false)
+                                        ->live(),
+                                    Hidden::make('border_preset')
+                                        ->default('pink-star')
+                                        ->required()
+                                        ->live(),
+                                    ViewField::make('border_preset_picker')
                                         ->label('Viền vòng quay')
-                                        ->options([
-                                            'classic-red' => 'Đỏ cổ điển',
-                                            'gold-ring' => 'Vòng vàng',
-                                            'pink-star' => 'Hồng ánh sao',
-                                            'violet-glow' => 'Tím phát sáng',
+                                        ->view('filament.forms.wheel-option-picker')
+                                        ->viewData([
+                                            'options' => static::borderPresetCatalog(),
+                                            'variant' => 'border',
+                                            'targetStatePath' => 'data.border_preset',
                                         ])
-                                        ->live()
-                                        ->required(),
-                                    Select::make('pointer_preset')
-                                        ->label('Mũi tên')
-                                        ->options([
-                                            'teardrop-gold' => 'Giọt vàng',
-                                            'triangle-fire' => 'Tam giác lửa',
-                                            'diamond-soft' => 'Kim cương mềm',
-                                        ])
-                                        ->live()
-                                        ->required(),
+                                        ->dehydrated(false)
+                                        ->live(),
+                                    FileUpload::make('border_asset_path')
+                                        ->label('Upload viền ngoài')
+                                        ->disk('public')
+                                        ->directory('wheel-borders')
+                                        ->visibility('public')
+                                        ->image()
+                                        ->imageEditor()
+                                        ->helperText('Nếu có ảnh upload, preview và mobile sẽ ưu tiên ảnh này thay vì preset viền mặc định.')
+                                        ->live(),
+                                    Hidden::make('pointer_preset')
+                                        ->default('teardrop-gold')
+                                        ->dehydrated()
+                                        ->live(),
                                     TextInput::make('center_label')
                                         ->label('Nhãn trung tâm')
                                         ->required()
+                                        ->default('19T')
                                         ->live(),
-                                    Select::make('background_style')
+                                    Hidden::make('background_style')
+                                        ->default('warm_gradient')
+                                        ->required()
+                                        ->live(),
+                                    ViewField::make('background_style_picker')
                                         ->label('Nền')
-                                        ->options([
-                                            'warm_gradient' => 'Chuyển sắc ấm',
-                                            'soft_purple' => 'Tím nhạt',
-                                            'pastel_grass' => 'Cỏ pastel',
+                                        ->view('filament.forms.wheel-option-picker')
+                                        ->viewData([
+                                            'options' => static::backgroundPresetCatalog(),
+                                            'variant' => 'background',
+                                            'targetStatePath' => 'data.background_style',
                                         ])
-                                        ->live()
-                                        ->required(),
+                                        ->dehydrated(false)
+                                        ->live(),
+                                    FileUpload::make('background_asset_path')
+                                        ->label('Upload background')
+                                        ->disk('public')
+                                        ->directory('wheel-backgrounds')
+                                        ->visibility('public')
+                                        ->image()
+                                        ->imageEditor()
+                                        ->helperText('Nếu có ảnh upload, preview và mobile sẽ ưu tiên ảnh này thay vì preset nền mặc định.')
+                                        ->live(),
                                     TextInput::make('preview_note')
                                         ->label('Ghi chú xem trước')
+                                        ->default('Quay ngay')
                                         ->live(),
                                     Placeholder::make('design_preview')
                                         ->label('Xem trước giao diện')
@@ -189,6 +218,8 @@ class GameResource extends Resource
                                             $accent = (string) ($get('accent_color') ?: '#d79e2f');
                                             $centerLabel = e((string) ($get('center_label') ?: '19T'));
                                             $previewNote = e((string) ($get('preview_note') ?: 'Quay ngay'));
+                                            $customBorderUrl = static::storageAssetUrl($get('border_asset_path'));
+                                            $customBackgroundUrl = static::storageAssetUrl($get('background_asset_path'));
                                             $palettePreset = match ((string) $get('palette_preset')) {
                                                 'marine' => ['#7dc4ff', '#ffb15c', '#8fd0ff', '#ff9a4d', '#85b8f8', '#ffc56f'],
                                                 'soft-pop' => ['#f8b3d0', '#ffe08a', '#a6d8ff', '#ffb49d', '#cab8ff', '#9fe3c2'],
@@ -202,22 +233,12 @@ class GameResource extends Resource
                                                 ...array_map('e', $palettePreset),
                                             );
 
-                                            $background = match ((string) $get('background_style')) {
-                                                'soft_purple' => 'linear-gradient(180deg, #f7e8ff 0%, #fff5fb 55%, #fffdf8 100%)',
-                                                'pastel_grass' => 'linear-gradient(180deg, #fff7e6 0%, #fffdf2 58%, #e5f7bf 100%)',
-                                                default => 'radial-gradient(circle at 20% 10%, rgba(249, 198, 103, 0.55), transparent 28%), linear-gradient(180deg, #fff4dc 0%, #fffbf2 62%, #fffef8 100%)',
-                                            };
-                                            $pointerShadow = match ((string) $get('pointer_preset')) {
-                                                'triangle-fire' => '0 10px 20px rgba(255, 118, 64, 0.35)',
-                                                'diamond-soft' => '0 10px 20px rgba(127, 90, 240, 0.25)',
-                                                default => '0 10px 20px rgba(215, 158, 47, 0.28)',
-                                            };
-                                            $borderStyle = match ((string) $get('border_preset')) {
-                                                'gold-ring' => 'linear-gradient(135deg, #ffef9d 0%, #c58d21 44%, #ffe79f 100%)',
-                                                'pink-star' => 'linear-gradient(135deg, #ff69b4 0%, #ff9c7a 50%, #ffd65e 100%)',
-                                                'violet-glow' => 'linear-gradient(135deg, #fd85ff 0%, #9657ff 52%, #ffd15c 100%)',
-                                                default => 'linear-gradient(135deg, #ff5034 0%, #ff9d29 48%, #ffdc72 100%)',
-                                            };
+                                            $background = static::backgroundPreviewStyle((string) ($get('background_style') ?: 'warm_gradient'));
+                                            $catalog = static::borderPresetCatalog();
+                                            $selectedPreset = $catalog[(string) ($get('border_preset') ?: 'classic-red')] ?? reset($catalog);
+                                            $selectedPresetAsset = isset($selectedPreset['asset'])
+                                                ? static::wheelAssetDataUri($selectedPreset['asset'])
+                                                : null;
 
                                             return new HtmlString(sprintf(
                                                 '<div style="border-radius:24px; border:1px solid #f2e6c5; background:#fffdfa; padding:20px; box-shadow:0 18px 40px rgba(125, 90, 20, 0.08);">
@@ -233,11 +254,11 @@ class GameResource extends Resource
                                                                     <div style="font-size:34px; line-height:1; font-style:italic; font-weight:500; color:%s; margin-top:8px;">Yêu Thương</div>
                                                                 </div>
                                                                 <div style="position:relative; width:210px; height:210px; margin:0 auto;">
-                                                                    <div style="position:absolute; top:-4px; left:50%%; transform:translateX(-50%%); width:0; height:0; border-left:16px solid transparent; border-right:16px solid transparent; border-bottom:30px solid %s; filter:drop-shadow(%s); z-index:3;"></div>
                                                                     <div style="position:absolute; inset:0; border-radius:999px; padding:10px; background:%s; box-shadow:0 16px 26px rgba(217, 169, 54, 0.22);">
                                                                         <div style="position:relative; width:100%%; height:100%%; border-radius:999px; overflow:hidden; background:%s; border:8px solid rgba(255,255,255,0.85);">
                                                                             <div style="position:absolute; inset:0; border-radius:999px; background:%s;"></div>
                                                                             <div style="position:absolute; inset:0; border-radius:999px; background:repeating-conic-gradient(from -90deg, rgba(255,255,255,0.18) 0deg 58deg, rgba(255,255,255,0) 58deg 60deg);"></div>
+                                                                            %s
                                                                             <div style="position:absolute; inset:50%% auto auto 50%%; transform:translate(-50%%, -50%%); width:72px; height:72px; border-radius:999px; background:%s; border:8px solid rgba(255,255,255,0.72); display:flex; align-items:center; justify-content:center; box-shadow:0 10px 18px rgba(217, 169, 54, 0.22);">
                                                                                 <span style="font-size:20px; font-weight:800; color:#9a5a18;">%s</span>
                                                                             </div>
@@ -290,14 +311,24 @@ class GameResource extends Resource
                                                         </div>
                                                     </div>
                                                 </div>',
-                                                e($background),
+                                                $customBackgroundUrl
+                                                    ? 'center / cover no-repeat url('.e($customBackgroundUrl).'), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.10))'
+                                                    : e($background),
                                                 e($accent),
                                                 e($accent),
-                                                e($accent),
-                                                e($pointerShadow),
-                                                e($borderStyle),
+                                                $customBorderUrl
+                                                    ? 'transparent url('.e($customBorderUrl).') center / contain no-repeat'
+                                                    : ($selectedPresetAsset
+                                                        ? 'transparent'
+                                                        : 'linear-gradient(135deg, #ff5034 0%, #ff9d29 48%, #ffdc72 100%)'),
                                                 e($secondary),
                                                 e($wheelGradient),
+                                                $selectedPresetAsset
+                                                    ? sprintf(
+                                                        '<div style="position:absolute; inset:0; border-radius:999px; background:center / contain no-repeat url(%s);"></div>',
+                                                        e($customBorderUrl ?: $selectedPresetAsset)
+                                                    )
+                                                    : '',
                                                 e($secondary),
                                                 $centerLabel,
                                                 e($accent),
@@ -500,5 +531,130 @@ class GameResource extends Resource
             'index' => ListGames::route('/'),
             'edit' => EditGame::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public static function palettePresetCatalog(): array
+    {
+        return [
+            'mint' => ['label' => 'Mint pastel', 'colors' => ['#f5d0b5', '#f5f1ee', '#abd8d1', '#76a8a9']],
+            'sunrise' => ['label' => 'Bình minh', 'colors' => ['#fdf1d0', '#ffcf64', '#ff914d', '#ff5040']],
+            'marine' => ['label' => 'Biển xanh', 'colors' => ['#edf5ff', '#1e63a4', '#114d86', '#0c355e']],
+            'soft-pop' => ['label' => 'Pastel nổi bật', 'colors' => ['#ffd8bf', '#f7d9cd', '#a8a0f1', '#7b58e5']],
+            'candy' => ['label' => 'Kẹo ngọt', 'colors' => ['#dbdbdb', '#f6d1c5', '#f2a7b8', '#f98d9b']],
+            'neon' => ['label' => 'Neon', 'colors' => ['#20b9ad', '#b2dee7', '#f7f8fc', '#ffb869']],
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public static function borderPresetCatalog(): array
+    {
+        return [
+            'pink-star' => ['label' => 'Hồng ánh sao', 'asset' => 'bg-vongquay/v4.png'],
+            'classic-red' => ['label' => 'Đỏ cổ điển', 'asset' => 'bg-vongquay/v2.png'],
+            'gold-ring' => ['label' => 'Vòng vàng', 'asset' => 'bg-vongquay/v3.png'],
+            'violet-glow' => ['label' => 'Tím phát sáng', 'asset' => 'bg-vongquay/v1.png'],
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public static function backgroundPresetCatalog(): array
+    {
+        return [
+            'warm_gradient' => [
+                'label' => 'Chuyển sắc ấm',
+                'background' => 'linear-gradient(180deg, #fff6ea 0%, #fff8eb 55%, #fff3dd 100%)',
+                'overlay' => 'radial-gradient(circle at top left, rgba(249, 198, 103, 0.42), transparent 32%), radial-gradient(circle at bottom center, rgba(245, 226, 140, 0.56), transparent 26%)',
+            ],
+            'soft_purple' => [
+                'label' => 'Tím dịu',
+                'background' => 'linear-gradient(180deg, #f9efff 0%, #fff7fd 52%, #fffdf7 100%)',
+                'overlay' => 'radial-gradient(circle at top left, rgba(219, 188, 255, 0.48), transparent 30%), radial-gradient(circle at bottom center, rgba(255, 219, 240, 0.54), transparent 28%)',
+            ],
+            'pastel_grass' => [
+                'label' => 'Cỏ pastel',
+                'background' => 'linear-gradient(180deg, #fff8e8 0%, #fffef4 58%, #eff8d4 100%)',
+                'overlay' => 'radial-gradient(circle at top left, rgba(255, 216, 171, 0.52), transparent 30%), radial-gradient(circle at bottom center, rgba(203, 237, 158, 0.48), transparent 30%)',
+            ],
+            'bg_showcase' => [
+                'label' => 'BG mặc định',
+                'asset' => 'bg/bg1.png',
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public static function pointerPresetCatalog(): array
+    {
+        return [
+            'teardrop-gold' => [
+                'label' => 'Giọt vàng',
+                'shape' => 'polygon(50% 0%, 88% 34%, 68% 100%, 32% 100%, 12% 34%)',
+                'background' => 'linear-gradient(180deg, #ffd052 0%, #d4961d 100%)',
+            ],
+            'triangle-fire' => [
+                'label' => 'Tam giác lửa',
+                'shape' => 'polygon(50% 0%, 100% 100%, 0% 100%)',
+                'background' => 'linear-gradient(180deg, #fff3be 0%, #efab37 38%, #ca6d14 100%)',
+            ],
+            'diamond-soft' => [
+                'label' => 'Kim cương mềm',
+                'shape' => 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
+                'background' => 'linear-gradient(180deg, #fff1ff 0%, #d9b4ff 48%, #8d62ff 100%)',
+            ],
+        ];
+    }
+
+    public static function backgroundPreviewStyle(string $style): string
+    {
+        $preset = static::backgroundPresetCatalog()[$style] ?? static::backgroundPresetCatalog()['warm_gradient'];
+
+        if (isset($preset['asset'])) {
+            $assetDataUri = static::wheelAssetDataUri($preset['asset']);
+
+            if ($assetDataUri) {
+                return 'center / cover no-repeat url('.$assetDataUri.'), linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.08))';
+            }
+        }
+
+        return trim((string) (($preset['overlay'] ?? '').', '.($preset['background'] ?? 'linear-gradient(180deg, #fff6ea 0%, #fff8eb 55%, #fff3dd 100%)')), ', ');
+    }
+
+    public static function wheelAssetDataUri(string $relativePath): ?string
+    {
+        $path = base_path($relativePath);
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        $contents = file_get_contents($path);
+
+        if ($contents === false) {
+            return null;
+        }
+
+        $mimeType = mime_content_type($path) ?: 'image/png';
+
+        return 'data:'.$mimeType.';base64,'.base64_encode($contents);
+    }
+
+    public static function storageAssetUrl(mixed $path): ?string
+    {
+        $value = trim((string) ($path ?? ''));
+
+        if ($value === '') {
+            return null;
+        }
+
+        return Storage::disk('public')->url($value);
     }
 }

@@ -459,9 +459,11 @@ class AdminGameController extends Controller
                 'design.accent_color' => ['required', 'string', 'max:20'],
                 'design.palette_preset' => ['required', 'string', 'max:50'],
                 'design.border_preset' => ['required', 'string', 'max:50'],
+                'design.border_asset_path' => ['nullable', 'string', 'max:255'],
                 'design.pointer_preset' => ['required', 'string', 'max:50'],
                 'design.center_label' => ['required', 'string', 'max:20'],
                 'design.background_style' => ['required', 'string', 'max:50'],
+                'design.background_asset_path' => ['nullable', 'string', 'max:255'],
                 'design.preview_note' => ['nullable', 'string', 'max:255'],
             ])['design'],
             'publish' => [

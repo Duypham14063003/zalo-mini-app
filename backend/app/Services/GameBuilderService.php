@@ -33,10 +33,10 @@ class GameBuilderService
     public function borderPresets(): array
     {
         return [
-            ['id' => 'classic-red', 'label' => 'Classic Red'],
-            ['id' => 'gold-ring', 'label' => 'Gold Ring'],
-            ['id' => 'pink-star', 'label' => 'Pink Star'],
-            ['id' => 'violet-glow', 'label' => 'Violet Glow'],
+            ['id' => 'pink-star', 'label' => 'Pink Star', 'asset' => 'bg-vongquay/v4.png'],
+            ['id' => 'classic-red', 'label' => 'Classic Red', 'asset' => 'bg-vongquay/v2.png'],
+            ['id' => 'gold-ring', 'label' => 'Gold Ring', 'asset' => 'bg-vongquay/v3.png'],
+            ['id' => 'violet-glow', 'label' => 'Violet Glow', 'asset' => 'bg-vongquay/v1.png'],
         ];
     }
 
@@ -121,11 +121,13 @@ class GameBuilderService
                 'primary_color' => $game->theme?->primary_color ?? '#f9c667',
                 'secondary_color' => $game->theme?->secondary_color ?? '#fff8e4',
                 'accent_color' => $game->theme?->accent_color ?? '#d79e2f',
-                'palette_preset' => Arr::get($themeTokens, 'wheel.palette_preset', 'sunrise'),
-                'border_preset' => Arr::get($themeTokens, 'wheel.border_preset', 'classic-red'),
+                'palette_preset' => Arr::get($themeTokens, 'wheel.palette_preset', 'mint'),
+                'border_preset' => Arr::get($themeTokens, 'wheel.border_preset', 'pink-star'),
+                'border_asset_path' => Arr::get($themeTokens, 'wheel.border_asset_path'),
                 'pointer_preset' => Arr::get($themeTokens, 'wheel.pointer_preset', 'teardrop-gold'),
                 'center_label' => Arr::get($themeTokens, 'wheel.center_label', '19T'),
                 'background_style' => $game->theme?->background_style ?? 'warm_gradient',
+                'background_asset_path' => $game->theme?->background_asset_path,
                 'preview_note' => Arr::get($themeTokens, 'wheel.preview_note', 'Quay ngay'),
             ],
             'presentation' => [
@@ -308,12 +310,14 @@ class GameBuilderService
                 'secondary_color' => data_get($design, 'secondary_color', '#fff8e4'),
                 'accent_color' => data_get($design, 'accent_color', '#d79e2f'),
                 'background_style' => data_get($design, 'background_style', 'warm_gradient'),
+                'background_asset_path' => data_get($design, 'background_asset_path'),
                 'theme_tokens' => [
                     'button_color' => data_get($design, 'primary_color', '#f9c667'),
                     'text_color' => '#6f4910',
                     'wheel' => [
-                        'palette_preset' => data_get($design, 'palette_preset', 'sunrise'),
-                        'border_preset' => data_get($design, 'border_preset', 'classic-red'),
+                        'palette_preset' => data_get($design, 'palette_preset', 'mint'),
+                        'border_preset' => data_get($design, 'border_preset', 'pink-star'),
+                        'border_asset_path' => data_get($design, 'border_asset_path'),
                         'pointer_preset' => data_get($design, 'pointer_preset', 'teardrop-gold'),
                         'center_label' => data_get($design, 'center_label', '19T'),
                         'preview_note' => data_get($design, 'preview_note', 'Quay ngay'),
@@ -448,15 +452,18 @@ class GameBuilderService
     public function mergedPreviewConfig(array $config): array
     {
         $palette = collect($this->palettePresets())
-            ->firstWhere('id', data_get($config, 'design.palette_preset', 'sunrise'));
+            ->firstWhere('id', data_get($config, 'design.palette_preset', 'mint'));
 
         $sliceColors = $palette['colors'] ?? ['#fdf1d0', '#ffcf64', '#ff914d', '#ff5040'];
 
         return array_merge($config, [
             'preview' => [
                 'slice_colors' => $sliceColors,
-                'border_preset' => data_get($config, 'design.border_preset', 'classic-red'),
+                'border_preset' => data_get($config, 'design.border_preset', 'pink-star'),
+                'border_asset_path' => data_get($config, 'design.border_asset_path'),
                 'pointer_preset' => data_get($config, 'design.pointer_preset', 'teardrop-gold'),
+                'background_style' => data_get($config, 'design.background_style', 'warm_gradient'),
+                'background_asset_path' => data_get($config, 'design.background_asset_path'),
             ],
         ]);
     }

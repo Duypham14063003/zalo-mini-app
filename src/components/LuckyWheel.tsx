@@ -26,9 +26,13 @@ type Theme = {
   secondary_color?: string | null;
   accent_color?: string | null;
   background_style?: string | null;
+  background_asset_path?: string | null;
+  background_asset_url?: string | null;
   wheel?: {
     palettePreset?: string | null;
     borderPreset?: string | null;
+    borderAssetPath?: string | null;
+    borderAssetUrl?: string | null;
     pointerPreset?: string | null;
     centerLabel?: string | null;
     previewNote?: string | null;
@@ -564,12 +568,14 @@ export default function LuckyWheel() {
   const content = bootstrap?.content ?? {};
   const backgroundStyle = bootstrap?.theme?.background_style ?? "warm_gradient";
   const wheelTheme = bootstrap?.theme?.wheel ?? null;
+  const backgroundAssetUrl =
+    bootstrap?.theme?.background_asset_url?.trim() || null;
   const paletteTones = useMemo(
     () => getPaletteTones(wheelTheme?.palettePreset),
     [wheelTheme?.palettePreset],
   );
   const borderPreset = wheelTheme?.borderPreset ?? "classic-red";
-  const pointerPreset = wheelTheme?.pointerPreset ?? "teardrop-gold";
+  const borderAssetUrl = wheelTheme?.borderAssetUrl?.trim() || null;
   const centerLabel = wheelTheme?.centerLabel?.trim() || "19T";
   const previewNote = wheelTheme?.previewNote?.trim() || "";
   const shellStyle = useMemo(
@@ -585,8 +591,11 @@ export default function LuckyWheel() {
         "--brand-background":
           bootstrap?.theme?.theme_tokens?.background_color ?? "#fff8eb",
         "--wheel-center-text": bootstrap?.theme?.accent_color ?? "#d26757",
+        "--brand-background-image": backgroundAssetUrl
+          ? `url("${backgroundAssetUrl}")`
+          : "none",
       }) as CSSProperties,
-    [bootstrap],
+    [backgroundAssetUrl, bootstrap],
   );
 
   useEffect(() => {
@@ -1182,10 +1191,18 @@ export default function LuckyWheel() {
 
           <div className="campaign-wheel-scene">
             <div
-              className={`campaign-wheel-pointer campaign-wheel-pointer--${pointerPreset}`}
-            />
-            <div
-              className={`campaign-wheel-ring campaign-wheel-ring--${borderPreset}`}
+              className={
+                borderAssetUrl
+                  ? "campaign-wheel-ring campaign-wheel-ring--custom"
+                  : `campaign-wheel-ring campaign-wheel-ring--${borderPreset}`
+              }
+              style={
+                borderAssetUrl
+                  ? {
+                      background: `center / contain no-repeat url("${borderAssetUrl}")`,
+                    }
+                  : undefined
+              }
             >
               <div
                 className="campaign-wheel"

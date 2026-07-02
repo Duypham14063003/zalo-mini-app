@@ -5,28 +5,41 @@
   --brand-text: #71490c;
   --brand-background: #fff8eb;
   --wheel-center-text: #d26757;
+  --brand-background-image: none;
   min-height: 100vh;
   position: relative;
   overflow: hidden;
   background:
+    var(--brand-background-image),
     radial-gradient(circle at top left, rgba(249, 198, 103, 0.42), transparent 32%),
     radial-gradient(circle at bottom center, rgba(245, 226, 140, 0.56), transparent 26%),
     linear-gradient(180deg, #fff6ea 0%, var(--brand-background) 55%, #fff3dd 100%);
+  background-position: center, left top, center bottom, center;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size: cover, auto, auto, auto;
   color: var(--brand-text);
 }
 
 .campaign-shell--soft_purple {
   background:
+    var(--brand-background-image),
     radial-gradient(circle at top left, rgba(219, 188, 255, 0.48), transparent 30%),
     radial-gradient(circle at bottom center, rgba(255, 219, 240, 0.54), transparent 28%),
     linear-gradient(180deg, #f9efff 0%, #fff7fd 52%, #fffdf7 100%);
+  background-position: center, left top, center bottom, center;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size: cover, auto, auto, auto;
 }
 
 .campaign-shell--pastel_grass {
   background:
+    var(--brand-background-image),
     radial-gradient(circle at top left, rgba(255, 216, 171, 0.52), transparent 30%),
     radial-gradient(circle at bottom center, rgba(203, 237, 158, 0.48), transparent 30%),
     linear-gradient(180deg, #fff8e8 0%, #fffef4 58%, #eff8d4 100%);
+  background-position: center, left top, center bottom, center;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+  background-size: cover, auto, auto, auto;
 }
 
 .campaign-backdrop {
@@ -385,6 +398,13 @@
 .campaign-wheel-ring--violet-glow {
   background:
     linear-gradient(135deg, #f18cff 0%, #8e5cff 42%, #ffb960 72%, #ffe49f 100%);
+}
+
+.campaign-wheel-ring--custom {
+  background-color: transparent;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
 }
 
 .campaign-wheel {

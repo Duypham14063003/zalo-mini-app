@@ -20,6 +20,7 @@ use App\Models\Workspace;
 use App\Models\WorkspaceMembership;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -47,7 +48,7 @@ class GameBuilderPlatformTest extends TestCase
             ->assertJsonPath('available', true)
             ->assertJsonPath('game.slug', 'ohar-yeu-thuong')
             ->assertJsonPath('theme.primary_color', '#f9c667')
-            ->assertJsonPath('theme.wheel.borderPreset', 'classic-red')
+            ->assertJsonPath('theme.wheel.borderPreset', 'pink-star')
             ->assertJsonPath('content.title', 'Yeu Thuong');
 
         $byPublicId = $this->getJson('/api/games/gm_demo_ohar_yeu_thuong/bootstrap');
@@ -271,9 +272,11 @@ class GameBuilderPlatformTest extends TestCase
                 'accent_color' => '#654321',
                 'palette_preset' => 'marine',
                 'border_preset' => 'gold-ring',
+                'border_asset_path' => 'wheel-borders/custom-ring.png',
                 'pointer_preset' => 'triangle-fire',
                 'center_label' => 'VIP',
-                'background_style' => 'soft_purple',
+                'background_style' => 'bg_showcase',
+                'background_asset_path' => 'wheel-backgrounds/custom-bg.png',
                 'preview_note' => 'Preview',
             ],
         ])->assertRedirect(route('games.edit', ['game' => $game, 'step' => 'design']));
@@ -287,6 +290,11 @@ class GameBuilderPlatformTest extends TestCase
             ->assertOk()
             ->assertJsonPath('theme.primary_color', '#123456')
             ->assertJsonPath('theme.wheel.borderPreset', 'gold-ring')
+            ->assertJsonPath('theme.wheel.borderAssetPath', 'wheel-borders/custom-ring.png')
+            ->assertJsonPath('theme.wheel.borderAssetUrl', Storage::disk('public')->url('wheel-borders/custom-ring.png'))
+            ->assertJsonPath('theme.background_style', 'bg_showcase')
+            ->assertJsonPath('theme.background_asset_path', 'wheel-backgrounds/custom-bg.png')
+            ->assertJsonPath('theme.background_asset_url', Storage::disk('public')->url('wheel-backgrounds/custom-bg.png'))
             ->assertJsonPath('theme.wheel.pointerPreset', 'triangle-fire');
     }
 
